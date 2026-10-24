@@ -121,7 +121,7 @@ def create_worker_session(name=None, notes=None, include_tailscale=True, request
     elif request_host:
         endpoint = f"http://{request_host}"
     else:
-        endpoint = "http://babel.ts.bkev.in:8080"
+        endpoint = "http://localhost:8080"
 
     # Determine script URL: configured CDN > self-hosted on dashboard
     cdn_url = get_worker_cdn_url()

@@ -29,7 +29,6 @@ import {
   openSettingsModal,
   saveSettingsConfig,
   openNewTxModal,
-  applyTxPreset,
   submitCreateTx,
   openEditTxModal,
   submitEditTx,
@@ -214,7 +213,6 @@ registerAction('change-page', (data) => changePage(parseInt(data.delta, 10) || 0
 // ==========================================================================
 registerChange('toggle-auto-ts', () => regenerateWorkerCmd());
 registerChange('toggle-ts-mode', () => toggleTsMode());
-registerChange('apply-preset', () => applyTxPreset());
 
 // ==========================================================================
 // Input Registrations ([data-input])

@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # ==============================================================================
-# BABEL STORAGE & DUPLICATION CONTROL CENTER INSTALLER
+# IMMICLONE STORAGE & DUPLICATION CONTROL CENTER INSTALLER
 # ==============================================================================
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-echo "==> Installing Babel Storage & Duplication Control Center from: ${REPO_DIR}"
+echo "==> Installing Immiclone Storage & Duplication Control Center from: ${REPO_DIR}"
 
 if [[ $EUID -ne 0 ]]; then
    echo "[!] This script must be run as root (use sudo)."

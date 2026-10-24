@@ -8,6 +8,13 @@ import subprocess
 APP_VERSION = "1.0.0"
 API_VERSION = "v1"
 
+# Base Directories (using realpath to resolve any symlinks cleanly)
+DASHBOARD_DIR = os.path.dirname(os.path.realpath(__file__))
+REPO_DIR = os.path.dirname(DASHBOARD_DIR)
+TEMPLATES_DIR = os.path.join(DASHBOARD_DIR, "templates")
+STATIC_DIR = os.path.join(DASHBOARD_DIR, "static")
+WORKER_SCRIPT_PATH = os.path.join(REPO_DIR, "worker", "worker.sh")
+
 def get_git_info():
     """Resolves current git commit SHA and active branch with disk fallbacks."""
     commit = "unknown"
@@ -72,26 +79,14 @@ def get_version_metadata():
         }
     }
 
-# Base Directories (using realpath to resolve any symlinks cleanly)
-DASHBOARD_DIR = os.path.dirname(os.path.realpath(__file__))
-REPO_DIR = os.path.dirname(DASHBOARD_DIR)
-TEMPLATES_DIR = os.path.join(DASHBOARD_DIR, "templates")
-STATIC_DIR = os.path.join(DASHBOARD_DIR, "static")
-WORKER_SCRIPT_PATH = os.path.join(REPO_DIR, "worker", "worker.sh")
-
 # Environment & Server Ports
 PORT = int(os.environ.get("PORT", 8080))
 
 # Dynamic Data Directory Resolution
 def get_default_data_dir():
-    """Resolves persistent data storage directory with graceful backward compatibility."""
+    """Resolves persistent data storage directory."""
     if os.environ.get("DATA_DIR"):
         return os.environ.get("DATA_DIR")
-    # Preserve legacy path if present on Babel host
-    legacy_dir = "/home/kevin/immich-app"
-    if os.path.isdir(legacy_dir):
-        return legacy_dir
-    # User home fallback (~/.immiclone) or local repo data/
     home_dir = os.path.expanduser("~")
     immiclone_dir = os.path.join(home_dir, ".immiclone")
     if os.path.exists(immiclone_dir) or os.name != "nt":
@@ -107,9 +102,9 @@ TAILSCALE_CONF_PATH = os.environ.get("TAILSCALE_CONF_PATH", os.path.join(DATA_DI
 APP_CONFIG_PATH = os.environ.get("APP_CONFIG_PATH", os.path.join(DATA_DIR, "app_config.json"))
 
 # Storage Mounts & Caching Paths (environment fallbacks)
-MOUNT_BASE = os.environ.get("MOUNT_BASE", "/mnt/gda/library/library")
-CACHE_BASE = os.environ.get("CACHE_BASE", "/var/cache/rclone-gda/vfs/bkc/library/library")
-RCLONE_CONF_PATH = os.environ.get("RCLONE_CONF_PATH", "/root/.config/rclone/rclone.conf")
+MOUNT_BASE = os.environ.get("MOUNT_BASE", "/mnt/immiclone")
+CACHE_BASE = os.environ.get("CACHE_BASE", "/var/cache/immiclone/vfs")
+RCLONE_CONF_PATH = os.environ.get("RCLONE_CONF_PATH", os.path.expanduser("~/.config/rclone/rclone.conf"))
 RCLONE_RC_URL = os.environ.get("RCLONE_RC_URL", "http://localhost:5572")
 
 # Split Domain Locks
@@ -153,61 +148,19 @@ def atomic_write_json(filepath, data):
 DEFAULT_CONFIG = {
     "general": {
         "app_name": "Immich & Duplication Control Center",
-        "server_external_url": "", # e.g. "http://babel.ts.bkev.in:8080"
-        "worker_cdn_url": "",      # e.g. "https://cdn.bkev.in/babel/worker.sh"
-        "immich_web_url": "",      # e.g. "http://babel.ts.bkev.in:2283"
-        "rclone_gui_url": ""       # e.g. "http://babel.ts.bkev.in:5572"
+        "server_external_url": "",
+        "worker_cdn_url": "",
+        "immich_web_url": "",
+        "rclone_gui_url": ""
     },
     "storage": {
-        "primary_remote": "bkc:",
+        "primary_remote": "",
         "mount_base": MOUNT_BASE,
         "cache_base": CACHE_BASE,
         "vfs_cache_max_gb": 10.0,
         "rclone_rc_url": RCLONE_RC_URL,
         "rclone_conf_path": RCLONE_CONF_PATH
-    },
-    "presets": [
-        {
-            "id": "raw-gdrive",
-            "name": "Raw Google Drive Mirror",
-            "source": "boredkevinmedia:crypt",
-            "dest": "1337quota:crypt",
-            "mode": "copy",
-            "priority": "normal",
-            "flags": "--transfers=8 --checkers=16 --fast-list --drive-server-side-across-configs",
-            "description": "Drive-to-Drive optimized flags with fast-list and multi-stream transfers."
-        },
-        {
-            "id": "raw-terabox",
-            "name": "Raw Terabox Mirror",
-            "source": "boredkevinmedia:crypt",
-            "dest": "tb:crypt",
-            "mode": "copy",
-            "priority": "normal",
-            "flags": "--size-only --transfers=4 --checkers=8 --tpslimit=4",
-            "description": "Raw encrypted mirror directly to Terabox cloud."
-        },
-        {
-            "id": "crypt-terabox",
-            "name": "Decrypted Terabox Mirror",
-            "source": "bkc:library",
-            "dest": "tbc:library",
-            "mode": "copy",
-            "priority": "normal",
-            "flags": "--size-only --transfers=4 --checkers=8 --tpslimit=4",
-            "description": "Decrypts in RAM and re-encrypts with Terabox crypt keys."
-        },
-        {
-            "id": "crypt-1337quota",
-            "name": "Decrypted 1337quota Mirror",
-            "source": "bkc:library",
-            "dest": "1qc:library",
-            "mode": "copy",
-            "priority": "normal",
-            "flags": "--transfers=8 --checkers=16 --fast-list --size-only",
-            "description": "Decrypts in RAM and re-encrypts into 1qc crypt remote."
-        }
-    ]
+    }
 }
 
 _cached_config = None
@@ -233,8 +186,6 @@ def get_app_config():
             for section in ("general", "storage"):
                 if isinstance(loaded.get(section), dict):
                     merged[section].update(loaded[section])
-            if "presets" in loaded and isinstance(loaded["presets"], list):
-                merged["presets"] = loaded["presets"]
 
         # Environment variable overrides take highest precedence
         if os.environ.get("MOUNT_BASE"):
@@ -261,8 +212,8 @@ def save_app_config(new_config):
 # Convenience Accessors
 def get_primary_remote():
     cfg = get_app_config()
-    rem = cfg.get("storage", {}).get("primary_remote", "bkc:").strip()
-    if not rem.endswith(":"):
+    rem = cfg.get("storage", {}).get("primary_remote", "").strip()
+    if rem and not rem.endswith(":"):
         rem += ":"
     return rem
 
@@ -308,39 +259,3 @@ def get_rclone_gui_url():
 def get_app_name():
     cfg = get_app_config()
     return cfg.get("general", {}).get("app_name", "Immich & Duplication Control Center").strip()
-
-def get_presets():
-    cfg = get_app_config()
-    return cfg.get("presets", [])
-
-def save_preset(preset_data):
-    """Adds or updates a duplication preset."""
-    with STATE_LOCK:
-        cfg = get_app_config()
-        presets = cfg.get("presets", [])
-        pid = preset_data.get("id") or f"preset-{secrets.token_hex(3)}"
-        preset_data["id"] = pid
-        found = False
-        for i, p in enumerate(presets):
-            if p.get("id") == pid:
-                presets[i] = preset_data
-                found = True
-                break
-        if not found:
-            presets.append(preset_data)
-        cfg["presets"] = presets
-        save_app_config(cfg)
-        return preset_data
-
-def delete_preset(preset_id):
-    """Removes a duplication preset."""
-    with STATE_LOCK:
-        cfg = get_app_config()
-        presets = cfg.get("presets", [])
-        initial_len = len(presets)
-        presets = [p for p in presets if p.get("id") != preset_id]
-        if len(presets) != initial_len:
-            cfg["presets"] = presets
-            save_app_config(cfg)
-            return True
-        return False

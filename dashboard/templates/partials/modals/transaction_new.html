@@ -17,29 +17,24 @@
           </svg>
         </button>
       </div>
-      <div class="form-group">
-        <label>Quick Preset</label>
-        <select class="form-select" id="tx-preset" data-change="apply-preset">
-          <option value="raw-gdrive" selected>Raw Google Drive Mirror (boredkevinmedia:crypt → 1337quota:crypt)</option>
-          <option value="raw-terabox">Raw Terabox Mirror (boredkevinmedia:crypt → tb:crypt)</option>
-          <option value="crypt-terabox">Decrypted Terabox Mirror (bkc:library → tbc:library)</option>
-          <option value="crypt-1337quota">Decrypted 1337quota Mirror (bkc:library → 1qc:library)</option>
-          <option value="custom">Custom Remote / Path...</option>
-        </select>
-      </div>
+
       <div class="form-group">
         <label>Transaction Title</label>
-        <input type="text" class="form-input" id="tx-title" value="Raw Mirror">
+        <input type="text" class="form-input" id="tx-title" placeholder="e.g. Daily Media Mirror">
       </div>
+
       <div class="form-group">
         <label>Source Remote / Path</label>
-        <input type="text" class="form-input mono" id="tx-source" value="boredkevinmedia:crypt">
+        <input type="text" class="form-input mono" id="tx-source" placeholder="e.g. remote1:path" list="source-remotes-list">
+        <datalist id="source-remotes-list"></datalist>
       </div>
+
       <div class="form-group">
         <label>Destination Remote / Path</label>
-        <input type="text" class="form-input mono" id="tx-dest" value="1337quota:crypt" list="dest-remotes-list">
+        <input type="text" class="form-input mono" id="tx-dest" placeholder="e.g. remote2:path" list="dest-remotes-list">
         <datalist id="dest-remotes-list"></datalist>
       </div>
+
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
         <div class="form-group">
           <label>Transfer Mode</label>
@@ -58,15 +53,18 @@
           </select>
         </div>
       </div>
+
       <div class="form-group">
         <label>Rclone Flags (Space-separated)</label>
-        <input type="text" class="form-input mono" id="tx-flags" value="--transfers=8 --checkers=16 --fast-list --drive-server-side-across-configs">
-        <div class="form-hint" id="tx-flags-hint">Drive-to-Drive optimized flags with fast-list and multi-stream transfers.</div>
+        <input type="text" class="form-input mono" id="tx-flags" placeholder="e.g. --size-only --transfers=4 --checkers=8">
+        <div class="form-hint" id="tx-flags-hint">Optional CLI flags passed directly to the rclone execution runner.</div>
       </div>
+
       <div class="form-group">
         <label>Notes (Optional)</label>
-        <input type="text" class="form-input" id="tx-notes" placeholder="e.g. Bit-for-bit encrypted cold mirror">
+        <input type="text" class="form-input" id="tx-notes" placeholder="e.g. Scheduled replication task">
       </div>
+
       <div class="modal-footer">
         <button class="btn" data-action="close-modal" data-target="new-tx">Cancel</button>
         <button class="btn btn-primary" data-action="submit-create-tx">Create Transaction</button>

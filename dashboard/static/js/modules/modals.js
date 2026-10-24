@@ -1,13 +1,11 @@
 /* ==========================================================================
    Modals Controller
-   Manages dialogs, presets, forms, and settings
+   Manages dialogs, forms, and settings
    ========================================================================== */
 
 import * as api from './api.js';
 import { regenerateWorkerCmd } from './duplication.js';
 import { escapeHtml } from './formatters.js';
-
-let loadedPresets = [];
 
 export function openModal(name) {
   const modal = document.getElementById(`modal-${name}`);
@@ -119,11 +117,11 @@ export async function openSettingsModal() {
     const elMount = document.getElementById('settings-mount-base');
     const elCache = document.getElementById('settings-cache-base');
 
-    if (elRemote) elRemote.value = st.primary_remote || 'bkc:';
+    if (elRemote) elRemote.value = st.primary_remote || '';
     if (elVfs) elVfs.value = st.vfs_cache_max_gb || 10.0;
     if (elRcUrl) elRcUrl.value = st.rclone_rc_url || 'http://localhost:5572';
-    if (elMount) elMount.value = st.mount_base || '/mnt/gda/library/library';
-    if (elCache) elCache.value = st.cache_base || '/var/cache/rclone-gda/vfs/bkc/library/library';
+    if (elMount) elMount.value = st.mount_base || '/mnt/immiclone';
+    if (elCache) elCache.value = st.cache_base || '/var/cache/immiclone/vfs';
 
     openModal('settings');
   } catch (err) {
@@ -140,11 +138,11 @@ export async function saveSettingsConfig() {
 
   const payload = {
     storage: {
-      primary_remote: elRemote ? elRemote.value.trim() : 'bkc:',
+      primary_remote: elRemote ? elRemote.value.trim() : '',
       vfs_cache_max_gb: elVfs ? parseFloat(elVfs.value) || 10.0 : 10.0,
       rclone_rc_url: elRcUrl ? elRcUrl.value.trim() : 'http://localhost:5572',
-      mount_base: elMount ? elMount.value.trim() : '/mnt/gda/library/library',
-      cache_base: elCache ? elCache.value.trim() : '/var/cache/rclone-gda/vfs/bkc/library/library'
+      mount_base: elMount ? elMount.value.trim() : '/mnt/immiclone',
+      cache_base: elCache ? elCache.value.trim() : '/var/cache/immiclone/vfs'
     }
   };
 
@@ -160,89 +158,33 @@ export async function saveSettingsConfig() {
 // ==========================================================================
 // Transactions Modals
 // ==========================================================================
-export async function loadPresets() {
-  try {
-    const data = await api.fetchPresets();
-    if (data.presets && data.presets.length > 0) {
-      loadedPresets = data.presets;
-      const sel = document.getElementById('tx-preset');
-      if (sel) {
-        sel.innerHTML = loadedPresets.map((p, idx) =>
-          `<option value="${p.id}" ${idx === 0 ? 'selected' : ''}>${escapeHtml(p.name)} (${escapeHtml(p.source)} → ${escapeHtml(p.dest)})</option>`
-        ).join('') + '<option value="custom">Custom Remote / Path...</option>';
-      }
-    }
-  } catch (e) {
-    console.error('[Modals] Failed to load presets:', e);
-  }
-}
-
 export async function loadRemotes() {
   try {
     const data = await api.fetchRemotes();
-    const dl = document.getElementById('dest-remotes-list');
-    if (dl && data.remotes) {
-      dl.innerHTML = data.remotes.map(r => `<option value="${r}crypt"></option><option value="${r}library"></option>`).join('');
+    const destDl = document.getElementById('dest-remotes-list');
+    const srcDl = document.getElementById('source-remotes-list');
+    if (data.remotes) {
+      const opts = data.remotes.map(r => `<option value="${r}"></option>`).join('');
+      if (destDl) destDl.innerHTML = opts;
+      if (srcDl) srcDl.innerHTML = opts;
     }
   } catch (e) {
     console.error('[Modals] Failed to load remotes:', e);
   }
 }
 
-export function applyTxPreset() {
-  const presetId = document.getElementById('tx-preset')?.value;
+export async function openNewTxModal() {
+  await loadRemotes();
   const titleEl = document.getElementById('tx-title');
   const srcEl = document.getElementById('tx-source');
   const dstEl = document.getElementById('tx-dest');
   const flagsEl = document.getElementById('tx-flags');
-  const hintEl = document.getElementById('tx-flags-hint');
-  const modeEl = document.getElementById('tx-mode');
-  const priorityEl = document.getElementById('tx-priority');
-
-  const preset = loadedPresets.find(p => p.id === presetId);
-  if (preset) {
-    if (titleEl) titleEl.value = preset.name || 'Duplication Transaction';
-    if (srcEl) srcEl.value = preset.source || '';
-    if (dstEl) dstEl.value = preset.dest || '';
-    if (flagsEl) flagsEl.value = preset.flags || '--size-only';
-    if (hintEl) hintEl.textContent = preset.description || '';
-    if (modeEl && preset.mode) modeEl.value = preset.mode;
-    if (priorityEl && preset.priority) priorityEl.value = preset.priority;
-    return;
-  }
-
-  // Built-in preset fallbacks
-  if (presetId === 'raw-gdrive') {
-    if (titleEl) titleEl.value = 'Raw Mirror';
-    if (srcEl) srcEl.value = 'boredkevinmedia:crypt';
-    if (dstEl) dstEl.value = '1337quota:crypt';
-    if (flagsEl) flagsEl.value = '--transfers=8 --checkers=16 --fast-list --drive-server-side-across-configs';
-    if (hintEl) hintEl.textContent = 'Optimized for raw Google Drive-to-Google Drive replication (zero decryption, bit-for-bit).';
-  } else if (presetId === 'raw-terabox') {
-    if (titleEl) titleEl.value = 'Raw Terabox Mirror';
-    if (srcEl) srcEl.value = 'boredkevinmedia:crypt';
-    if (dstEl) dstEl.value = 'tb:crypt';
-    if (flagsEl) flagsEl.value = '--size-only --transfers=4 --checkers=8 --tpslimit=4';
-    if (hintEl) hintEl.textContent = 'Raw encrypted mirror directly to Terabox cloud.';
-  } else if (presetId === 'crypt-terabox') {
-    if (titleEl) titleEl.value = 'Decrypted Terabox Mirror';
-    if (srcEl) srcEl.value = 'bkc:library';
-    if (dstEl) dstEl.value = 'tbc:library';
-    if (flagsEl) flagsEl.value = '--size-only --transfers=4 --checkers=8 --tpslimit=4';
-    if (hintEl) hintEl.textContent = 'Decrypts in RAM and re-encrypts with Terabox crypt keys.';
-  } else if (presetId === 'crypt-1337quota') {
-    if (titleEl) titleEl.value = 'Decrypted 1337quota Mirror';
-    if (srcEl) srcEl.value = 'bkc:library';
-    if (dstEl) dstEl.value = '1qc:library';
-    if (flagsEl) flagsEl.value = '--transfers=8 --checkers=16 --fast-list --size-only';
-    if (hintEl) hintEl.textContent = 'Decrypts in RAM and re-encrypts into 1qc crypt remote.';
-  }
-}
-
-export async function openNewTxModal() {
-  await loadPresets();
-  await loadRemotes();
-  applyTxPreset();
+  const notesEl = document.getElementById('tx-notes');
+  if (titleEl) titleEl.value = '';
+  if (srcEl) srcEl.value = '';
+  if (dstEl) dstEl.value = '';
+  if (flagsEl) flagsEl.value = '--size-only --transfers=4 --checkers=8';
+  if (notesEl) notesEl.value = '';
   openModal('new-tx');
 }
 

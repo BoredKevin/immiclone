@@ -35,10 +35,6 @@ export const triggerUpdateCheck = () => apiPost(`${API_PREFIX}/updates/check`);
 export const fetchSettings = () => apiGet(`${API_PREFIX}/settings`);
 export const saveSettings = (payload) => apiPost(`${API_PREFIX}/settings`, payload);
 
-// Presets
-export const fetchPresets = () => apiGet(`${API_PREFIX}/presets`);
-export const savePreset = (payload) => apiPost(`${API_PREFIX}/presets/save`, payload);
-export const deletePreset = (id) => apiPost(`${API_PREFIX}/presets/delete`, { id });
 
 // Tailscale
 export const fetchTailscaleConfig = () => apiGet(`${API_PREFIX}/tailscale/config`);

@@ -324,14 +324,6 @@ class TestLiveDashboardServer(unittest.TestCase):
             self.assertIn("total_files", data)
             self.assertIn("files", data)
 
-    def test_get_api_v1_presets(self):
-        url_presets = f"http://127.0.0.1:{TEST_PORT}/api/v1/presets"
-        with urllib.request.urlopen(url_presets, timeout=3) as resp:
-            self.assertEqual(resp.status, 200)
-            data = json.loads(resp.read().decode("utf-8"))
-            self.assertIn("presets", data)
-            self.assertTrue(len(data["presets"]) > 0)
-
     def test_get_worker_script_zero_cdn(self):
         url = f"http://127.0.0.1:{TEST_PORT}/worker.sh"
         with urllib.request.urlopen(url, timeout=3) as resp:

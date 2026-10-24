@@ -6,7 +6,6 @@ from dashboard.config import (
     STATE_LOCK,
     WORKER_SCRIPT_PATH,
     get_app_config,
-    get_presets,
     get_rclone_conf_path,
     get_version_metadata
 )
@@ -100,18 +99,11 @@ class GetRoutesMixin:
             self.send_json({
                 "general": cfg.get("general", {}),
                 "storage": cfg.get("storage", {}),
-                "presets": cfg.get("presets", []),
                 "detected_remotes": get_available_remotes()
             })
             return
 
-        # 7. DUPLICATION PRESETS LIST API
-        elif canonical_path == "/api/v1/presets":
-            presets = get_presets()
-            self.send_json({"presets": presets})
-            return
-
-        # 8. PAGINATED MEDIA CATALOG API
+        # 7. PAGINATED MEDIA CATALOG API
         elif canonical_path == "/api/v1/media":
             page = int(query.get("page", ["1"])[0])
             limit = int(query.get("limit", ["50"])[0])

@@ -4,8 +4,6 @@ from dashboard.config import (
     STATE_LOCK,
     get_app_config,
     save_app_config,
-    save_preset,
-    delete_preset,
     get_primary_remote
 )
 from dashboard.services.tailscale import (
@@ -59,7 +57,7 @@ class PostRoutesMixin:
             return
 
         # -------------------------------------------------------------
-        # APPLICATION SETTINGS & PRESETS CRUD
+        # APPLICATION SETTINGS CRUD
         # -------------------------------------------------------------
         elif canonical_path == "/api/v1/settings" or canonical_path == "/api/v1/settings/save":
             current_cfg = get_app_config()
@@ -69,19 +67,6 @@ class PostRoutesMixin:
                 current_cfg["storage"].update(req_data["storage"])
             save_app_config(current_cfg)
             self.send_json({"status": "ok", "settings": current_cfg})
-            return
-
-        elif canonical_path == "/api/v1/presets/save":
-            saved = save_preset(req_data)
-            self.send_json({"status": "ok", "preset": saved})
-            return
-
-        elif canonical_path == "/api/v1/presets/delete":
-            pid = req_data.get("id", "")
-            if delete_preset(pid):
-                self.send_json({"status": "ok"})
-            else:
-                self.send_error_msg(404, "Preset Not Found")
             return
 
         # -------------------------------------------------------------
@@ -230,9 +215,10 @@ class PostRoutesMixin:
         # DUPLICATION TRANSACTIONS CRUD
         # -------------------------------------------------------------
         elif canonical_path == "/api/v1/tx/create":
-            default_src = f"{get_primary_remote()}library"
+            primary = get_primary_remote()
+            default_src = f"{primary}library" if primary else ""
             src = req_data.get("source") or default_src
-            dst = req_data.get("dest", "tbc:library")
+            dst = req_data.get("dest", "")
             title = req_data.get("title")
             mode = req_data.get("mode", "copy")
             priority = req_data.get("priority", "normal")

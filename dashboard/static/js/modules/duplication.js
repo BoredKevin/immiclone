@@ -270,7 +270,7 @@ export async function regenerateWorkerCmd() {
       displayEl.title = 'Click Copy One-Liner to copy the exact unmasked command';
     }
   } catch (e) {
-    fullWorkerCommand = 'curl -sSL https://cdn.bkev.in/babel/worker.sh | bash';
+    fullWorkerCommand = `curl -sSL ${window.location.origin}/worker.sh | bash`;
     const displayEl = document.getElementById('worker-cmd-display');
     if (displayEl) displayEl.textContent = fullWorkerCommand;
   }

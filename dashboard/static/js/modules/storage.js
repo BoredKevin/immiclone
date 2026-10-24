@@ -100,9 +100,9 @@ function renderRemotesGrid(storage) {
       }
     });
   } else {
-    // Single primary cloud fallback (cloud_bkc or primary_cloud)
+    // Single primary cloud fallback
     if (primaryFallback) primaryFallback.classList.remove('hidden');
-    const primary = storage.primary_cloud || storage.cloud_bkc;
+    const primary = storage.primary_cloud;
     if (primary) {
       const cloudUsed = document.getElementById('cloud-used');
       const cloudTotal = document.getElementById('cloud-total');
@@ -112,8 +112,8 @@ function renderRemotesGrid(storage) {
       const cloudTrash = document.getElementById('cloud-trash');
       const cloudTitle = document.getElementById('cloud-title');
 
-      if (cloudTitle && primary.remote_name) {
-        cloudTitle.textContent = `Authoritative Cloud (${primary.remote_name})`;
+      if (cloudTitle && (primary.remote || primary.remote_name)) {
+        cloudTitle.textContent = `Authoritative Cloud (${primary.remote || primary.remote_name})`;
       }
       if (cloudUsed) cloudUsed.textContent = primary.used || '0 GB';
       if (cloudTotal) cloudTotal.textContent = primary.total || '0 GB';

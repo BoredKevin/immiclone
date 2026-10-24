@@ -64,15 +64,6 @@ curl -sSL http://your-server-ip:8080/worker.sh | bash -s -- --id worker-1234 --e
 
 ---
 
-## Ready-Made Presets
-
-When creating a job, you can pick from handy presets:
-- **Raw Google Drive Mirror**: Fast server-side copy between two Google Drive accounts (no decryption needed).
-- **Terabox Mirror**: Tuned settings that handle Terabox upload quirks safely without duplicates.
-- **Custom**: Type in any source and destination remote you configured in Rclone.
-
----
-
 ## Dashboard Ports
 
 | Port | What it is |

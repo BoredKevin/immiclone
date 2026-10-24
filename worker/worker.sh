@@ -13,12 +13,12 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # ==============================================================================
-# BABEL / IMMICLONE DUPLICATION WORKER
+# IMMICLONE DUPLICATION WORKER
 # Zero credentials stored on disk; fully stateless compute runner.
 # ==============================================================================
 
 WORKER_ID="worker-$(head -c 2 /dev/urandom | xxd -p 2>/dev/null || echo $RANDOM)"
-ENDPOINT="http://babel.ts.bkev.in:8080"
+ENDPOINT="http://localhost:8080"
 TOKEN=""
 TS_KEY=""
 
@@ -163,10 +163,10 @@ api_get() {
     "${ENDPOINT}${req_path}"
 }
 
-# Register with Babel
+# Register with Controller
 HOSTNAME_STR="$(hostname 2>/dev/null || echo 'gcp-instance')"
 echo "============================================================"
-echo " IMMICLONE / BABEL DUPLICATION RUNNER"
+echo " IMMICLONE DUPLICATION RUNNER"
 echo "============================================================"
 echo " Worker ID : ${WORKER_ID} (${HOSTNAME_STR})"
 echo " Endpoint  : ${ENDPOINT}"

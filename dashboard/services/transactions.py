@@ -51,10 +51,11 @@ def update_transaction(tx_id, updates):
             save_transactions(tx_list)
         return found
 
-def create_transaction(source=None, dest="tbc:library", title=None, mode="copy", priority="normal", rclone_flags=None, notes=""):
+def create_transaction(source=None, dest="", title=None, mode="copy", priority="normal", rclone_flags=None, notes=""):
     """Creates a new duplication transaction."""
     if not source:
-        source = f"{get_primary_remote()}library"
+        primary = get_primary_remote()
+        source = f"{primary}library" if primary else ""
     tx_id = f"dup-{datetime.now().strftime('%Y%m%d')}-{secrets.token_hex(2)}"
     new_tx = {
         "tx_id": tx_id,

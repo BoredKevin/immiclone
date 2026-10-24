@@ -1,5 +1,5 @@
 [Unit]
-Description=Rclone Mount for bkc: (Immich Storage)
+Description=Rclone Mount for remote: (Immich Storage)
 Wants=network-online.target
 After=network-online.target
 AssertPathIsDirectory=/mnt/gda
@@ -9,7 +9,7 @@ Type=notify
 User=root
 Group=root
 Environment=RCLONE_CONFIG=/root/.config/rclone/rclone.conf
-ExecStart=/usr/bin/rclone mount bkc: /mnt/gda \
+ExecStart=/usr/bin/rclone mount remote: /mnt/gda \
   --allow-other \
   --uid=1000 \
   --gid=1000 \

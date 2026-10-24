@@ -190,7 +190,8 @@ def get_live_sse_payload():
 
     # Dynamic primary remote quota inspection
     primary_rem = get_primary_remote()
-    cloud_info = query_rclone("operations/about", {"fs": primary_rem}) or {}
+    cloud_info = query_rclone("operations/about", {"fs": primary_rem}) if primary_rem else {}
+    cloud_info = cloud_info or {}
     cloud_total = cloud_info.get("total", 0)
     cloud_used = cloud_info.get("used", 0)
     cloud_free = cloud_info.get("free", 0)
@@ -252,8 +253,7 @@ def get_live_sse_payload():
                 "vfs_cache_limit": cache_limit_str,
                 "vfs_cache_percent": cache_percent
             },
-            "primary_cloud": primary_cloud_data,
-            "cloud_bkc": primary_cloud_data # Backwards-compatible alias for existing frontend code
+            "primary_cloud": primary_cloud_data
         },
         "rclone": {
             "speed": speed_str,
