@@ -2,13 +2,13 @@
 set -euo pipefail
 
 # ==============================================================================
-# BABEL AUTO-UPDATE SCRIPT
+# IMMICLONE AUTO-UPDATE SCRIPT
 # Performs safe git pull and zero-downtime service reload.
 # ==============================================================================
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-echo "==> Updating Babel Storage & Duplication Control Center..."
+echo "==> Updating Immich Duplication Control Center (Immiclone)..."
 cd "${REPO_DIR}"
 
 # 1. Pull latest changes
