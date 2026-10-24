@@ -52,6 +52,7 @@ fi
 RAM_DIR="/dev/shm/.immiclone-worker-${WORKER_ID}"
 mkdir -p -m 700 "$RAM_DIR"
 RCLONE_CONF="${RAM_DIR}/rclone.conf"
+RCLONE_LOG="${RAM_DIR}/rclone.log"
 TAILSCALE_SOCK="${RAM_DIR}/tailscaled.sock"
 TAILSCALE_LOG="${RAM_DIR}/tailscaled.log"
 TAILSCALE_PID=""
@@ -245,7 +246,7 @@ while true; do
           --config="$RCLONE_CONF" \
           "${CUSTOM_FLAGS[@]}" \
           --rc --rc-addr="127.0.0.1:${RC_PORT}" --rc-no-auth \
-          --quiet &
+          --log-file="$RCLONE_LOG" --log-level=NOTICE &
         RCLONE_PID=$!
         ACTIVE_TX="$TX_ID"
         ACTIVE_LEASE="$LEASE_ID"
@@ -259,7 +260,17 @@ while true; do
         TOTAL_BYTES="$(echo "$STATS" | jq '.totalBytes // 0')"
         SPEED="$(echo "$STATS" | jq '[.transferring[]?.speed] | add // 0')"
         ETA="$(echo "$STATS" | jq '.eta // 0')"
-        CUR_FILE="$(echo "$STATS" | jq -r '.transferring[0].name // "Checking existing files..."')"
+        
+        ACTIVE_TRANSFER="$(echo "$STATS" | jq -r '.transferring[0].name // empty')"
+        ACTIVE_CHECK="$(echo "$STATS" | jq -r '.checking[0].name // empty')"
+        if [[ -n "$ACTIVE_TRANSFER" ]]; then
+          CUR_FILE="${ACTIVE_TRANSFER}"
+        elif [[ -n "$ACTIVE_CHECK" ]]; then
+          CUR_FILE="Check: ${ACTIVE_CHECK}"
+        else
+          CUR_FILE="Scanning / comparing file trees..."
+        fi
+
         CHECKS="$(echo "$STATS" | jq '.checks // 0')"
         TRANSFERS="$(echo "$STATS" | jq '.transfers // 0')"
 
@@ -299,7 +310,8 @@ while true; do
           echo -e "\n[✅] Transaction ${TX_ID} COMPLETED successfully!"
           api_post "/api/v1/worker/report" "{\"worker_id\":\"${WORKER_ID}\",\"tx_id\":\"${TX_ID}\",\"lease_id\":${ACTIVE_LEASE},\"status\":\"COMPLETED\"}" >/dev/null || true
         else
-          echo -e "\n[❌] Rclone exited with code ${EXIT_CODE}"
+          echo -e "\n[❌] Rclone exited with code ${EXIT_CODE}. Log output:"
+          tail -n 12 "$RCLONE_LOG" 2>/dev/null || true
           api_post "/api/v1/worker/report" "{\"worker_id\":\"${WORKER_ID}\",\"tx_id\":\"${TX_ID}\",\"lease_id\":${ACTIVE_LEASE},\"status\":\"INTERRUPTED\"}" >/dev/null || true
         fi
       fi
