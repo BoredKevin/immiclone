@@ -1,0 +1,33 @@
+[Unit]
+Description=Rclone Mount for bkc: (Immich Storage)
+Wants=network-online.target
+After=network-online.target
+AssertPathIsDirectory=/mnt/gda
+
+[Service]
+Type=notify
+User=root
+Group=root
+Environment=RCLONE_CONFIG=/root/.config/rclone/rclone.conf
+ExecStart=/usr/bin/rclone mount bkc: /mnt/gda \
+  --allow-other \
+  --uid=1000 \
+  --gid=1000 \
+  --umask 0002 \
+  --dir-cache-time 12h \
+  --poll-interval 1m \
+  --vfs-cache-mode full \
+  --vfs-cache-max-size 10G \
+  --vfs-cache-max-age 24h \
+  --cache-dir /var/cache/rclone-gda \
+  --rc \
+  --rc-web-gui \
+  --rc-web-gui-no-open-browser \
+  --rc-addr 0.0.0.0:5572 \
+  --rc-no-auth
+ExecStop=/bin/fusermount3 -u -z /mnt/gda
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

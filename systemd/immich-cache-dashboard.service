@@ -1,0 +1,14 @@
+[Unit]
+Description=Immich Cache Dashboard Web UI & Duplication Manager
+After=network.target rclone-gda.service
+
+[Service]
+Type=simple
+User=root
+# Adjust path to where the repository or symlink is installed
+ExecStart=/usr/bin/python3 /usr/local/bin/immich-cache-dashboard.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

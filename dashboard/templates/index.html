@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Babel • Immich & Duplication Control Center</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📸 Immich & Duplication Control Center</h1>
+      <div style="display:flex; align-items:center; gap: 12px;">
+        <div class="live-indicator"><div class="pulse-dot"></div> Live Telemetry Active</div>
+        <a href="http://babel.ts.bkev.in:2283" target="_blank" class="btn btn-sm btn-primary">Immich Server ↗</a>
+        <a href="http://babel.ts.bkev.in:5572" target="_blank" class="btn btn-sm">Rclone GUI ↗</a>
+      </div>
+    </header>
+
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="tab-nav-tx" onclick="switchNav('tx')">☁️ Duplication Manager <span class="badge-count" id="nav-tx-count">0</span></button>
+      <button class="nav-tab" id="tab-nav-media" onclick="switchNav('media')">📁 Media & Cache</button>
+      <button class="nav-tab" id="tab-nav-jobs" onclick="switchNav('jobs')">⚡ Local Rclone Mount</button>
+      <button class="nav-tab" id="tab-nav-storage" onclick="switchNav('storage')">💾 Storage Capacity</button>
+    </div>
+
+    <!-- TAB 1: DUPLICATION MANAGER -->
+    <div class="tab-content active" id="content-tx">
+      
+      <!-- 1. Tailscale Configuration Banner -->
+      <div class="banner-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div style="font-size:14px; font-weight:700; color:var(--heading); display:flex; align-items:center; gap:8px;">
+              <span>🔒 Tailscale Worker Network Configuration</span>
+              <span id="ts-badge" class="badge badge-paused">Checking...</span>
+            </div>
+            <div style="font-size:12px; color:var(--gray); margin-top:4px;" id="ts-status-desc">
+              Loading Tailscale settings...
+            </div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-primary" onclick="openTailscaleModal()">⚙️ Manage Tailscale Key</button>
+            <button class="btn btn-sm" onclick="testTailscaleKey()">🧪 Test Connection</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteTailscaleKey()">Clear Key</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. One-Liner Generator Box -->
+      <div class="one-liner-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <strong style="color:var(--heading); font-size:14px;">🚀 Launch Ephemeral Worker in Google Cloud Console</strong>
+            <span style="font-size:12px; color:var(--gray); margin-left:8px;">(Free gigabit cloud-to-cloud transfer runner)</span>
+          </div>
+          <div class="btn-group">
+            <label style="font-size:12px; color:var(--text); display:flex; align-items:center; gap:6px; cursor:pointer; margin-right:8px;">
+              <input type="checkbox" id="chk-auto-ts" checked onchange="regenerateWorkerCmd()"> Include Tailscale Key
+            </label>
+            <button class="btn btn-sm" onclick="regenerateWorkerCmd()">🔄 New Session</button>
+            <button class="btn btn-sm btn-success" onclick="copyWorkerCmd()">📋 Copy One-Liner</button>
+          </div>
+        </div>
+        <div class="cmd-text" id="worker-cmd-display">Generating worker command...</div>
+      </div>
+
+      <!-- 3. Transactions Section (Full CRUD) -->
+      <div class="section-head">
+        <div class="section-title">
+          <span>🔄 Persistent Duplication Transactions</span>
+          <div class="filter-chips" style="margin-left: 12px;">
+            <span class="chip active" id="tx-filter-all" onclick="setTxFilter('all')">All (<span id="count-tx-all">0</span>)</span>
+            <span class="chip" id="tx-filter-running" onclick="setTxFilter('running')">Running (<span id="count-tx-running">0</span>)</span>
+            <span class="chip" id="tx-filter-paused" onclick="setTxFilter('paused')">Paused/Interrupted (<span id="count-tx-paused">0</span>)</span>
+            <span class="chip" id="tx-filter-completed" onclick="setTxFilter('completed')">Completed (<span id="count-tx-completed">0</span>)</span>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-danger" onclick="clearCompletedTx()">🧹 Clear Finished</button>
+          <button class="btn btn-primary" onclick="openNewTxModal()">+ New Transaction</button>
+        </div>
+      </div>
+
+      <div id="transactions-container">
+        <div class="empty-state">No transactions created yet. Click "+ New Transaction" to create one.</div>
+      </div>
+
+      <!-- 4. Connected Workers Pool (Full CRUD) -->
+      <div class="section-head" style="margin-top: 36px;">
+        <div class="section-title">
+          <span>💻 Compute Workers Pool</span>
+          <div class="filter-chips" style="margin-left: 12px;">
+            <span class="chip active" id="w-filter-all" onclick="setWorkerFilter('all')">All (<span id="count-w-all">0</span>)</span>
+            <span class="chip" id="w-filter-active" onclick="setWorkerFilter('active')">Active / Standby (<span id="count-w-active">0</span>)</span>
+            <span class="chip" id="w-filter-offline" onclick="setWorkerFilter('offline')">Offline (<span id="count-w-offline">0</span>)</span>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-danger" onclick="pruneOfflineWorkers()">🧹 Prune Offline</button>
+          <button class="btn btn-sm btn-primary" onclick="openNewWorkerModal()">+ Pre-Register Worker</button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Worker ID & Name</th>
+            <th>Hostname / Host</th>
+            <th>Assigned Transaction</th>
+            <th>Last Ping</th>
+            <th>Notes</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="workers-table-body">
+          <tr><td colspan="7" class="empty-state">No workers registered. Launch a worker via the one-liner above.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB 2: MEDIA & CACHE -->
+    <div class="tab-content" id="content-media">
+      <div class="stats-grid">
+        <div class="card">
+          <div class="card-title">Total Library Media</div>
+          <div class="card-val" id="stat-total">0</div>
+          <div class="card-sub">Master photos & videos in Immich</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Cached on Babel SSD</div>
+          <div class="card-val" id="stat-cached">0</div>
+          <div class="card-sub"><span id="stat-cached-size">0 MB</span> of 10 GB limit (<span id="stat-cached-pct">0%</span>)</div>
+          <div class="progress-bar"><div class="progress-fill green" id="stat-cache-bar" style="width: 0%"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Cloud-Only in bkc:</div>
+          <div class="card-val" id="stat-cloud">0</div>
+          <div class="card-sub">Evicted from SSD, safe in encrypted cloud</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Babel Free Disk Space</div>
+          <div class="card-val" id="stat-disk-free">0 GB</div>
+          <div class="card-sub">Available on root SSD</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <input type="text" class="search-input" id="search" placeholder="Search files or folder paths..." oninput="onSearchInput()">
+        <div class="btn-group">
+          <button class="btn btn-sm active" id="filter-all" onclick="setFilter('all')">All</button>
+          <button class="btn btn-sm" id="filter-cached" onclick="setFilter('cached')">Cached (Local SSD)</button>
+          <button class="btn btn-sm" id="filter-cloud" onclick="setFilter('cloud')">Cloud-Only (bkc:)</button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>File Path</th>
+            <th>Size</th>
+            <th>Date Added</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="4" class="empty-state">Loading media...</td></tr>
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <button class="page-btn" id="btn-prev" onclick="changePage(-1)" disabled>← Previous</button>
+        <span class="page-info" id="page-display">Page 1 of 1 (0 items)</span>
+        <button class="page-btn" id="btn-next" onclick="changePage(1)" disabled>Next →</button>
+      </div>
+    </div>
+
+    <!-- TAB 3: LOCAL RCLONE MOUNT -->
+    <div class="tab-content" id="content-jobs">
+      <div class="stats-grid">
+        <div class="card">
+          <div class="card-title">Current Upload Speed</div>
+          <div class="card-val" style="color: var(--green-light);" id="stat-rc-speed">0 B/s</div>
+          <div class="card-sub">Real-time bandwidth to bkc:</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Active Uploads</div>
+          <div class="card-val" style="color: var(--accent);" id="stat-rc-active">0</div>
+          <div class="card-sub">Files currently in flight</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Transfers Completed</div>
+          <div class="card-val" id="stat-rc-done">0</div>
+          <div class="card-sub">Files successfully uploaded</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Total Uploaded (Session)</div>
+          <div class="card-val" id="stat-rc-total">0 B</div>
+          <div class="card-sub">Total data transferred</div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-bottom: 12px;">Files Currently Uploading to Cloud Drive</div>
+      <table>
+        <thead>
+          <tr>
+            <th>File Name</th>
+            <th>Progress</th>
+            <th>Speed</th>
+            <th>Transferred</th>
+            <th>ETA</th>
+          </tr>
+        </thead>
+        <tbody id="jobs-table-body">
+          <tr><td colspan="5" class="empty-state">No active uploads right now. Cache is quiescent.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB 4: STORAGE CAPACITY -->
+    <div class="tab-content" id="content-storage">
+      <div class="stats-grid">
+        <div class="card">
+          <div class="card-title">Local Root SSD Partition</div>
+          <div class="card-val" id="ssd-used">0 GB</div>
+          <div class="card-sub">Used of <span id="ssd-total">0 GB</span> (<span id="ssd-pct">0%</span>)</div>
+          <div class="progress-bar"><div class="progress-fill blue" id="ssd-bar" style="width: 0%"></div></div>
+          <div style="font-size:12px; color:var(--gray); margin-top:8px;">Free: <strong id="ssd-free" style="color:var(--heading);">0 GB</strong></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Authoritative Cloud (bkc:)</div>
+          <div class="card-val" id="cloud-used">0 GB</div>
+          <div class="card-sub">Used of <span id="cloud-total">0 GB</span> (<span id="cloud-pct">0%</span>)</div>
+          <div class="progress-bar"><div class="progress-fill purple" id="cloud-bar" style="width: 0%"></div></div>
+          <div style="font-size:12px; color:var(--gray); margin-top:8px;">Free: <strong id="cloud-free" style="color:var(--heading);">0 GB</strong> | Trash: <span id="cloud-trash">0 GB</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- 1. TAILSCALE CONFIGURATION MODAL -->
+  <div class="modal-overlay" id="modal-tailscale">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">🔒 Tailscale Network Settings</div>
+        <button class="modal-close" onclick="closeTailscaleModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Configuration Mode</label>
+        <select class="form-select" id="ts-mode" onchange="toggleTsMode()">
+          <option value="auth_key">Tailscale Pre-Auth Key (Reusable / Ephemeral)</option>
+          <option value="api">Tailscale API Key</option>
+          <option value="oauth">Tailscale OAuth Client (Enterprise / Recommended)</option>
+        </select>
+      </div>
+
+      <div id="ts-fields-auth">
+        <div class="form-group">
+          <label>Tailscale Auth Key</label>
+          <input type="password" class="form-input" id="ts-auth-key" placeholder="tskey-auth-k...">
+          <div class="form-hint">Create an auth key in Tailscale Admin Console: Settings ➔ Keys ➔ Generate auth key. Recommended tags: <code>tag:worker</code>.</div>
+        </div>
+      </div>
+
+      <div id="ts-fields-api" style="display:none;">
+        <div class="form-group">
+          <label>Tailnet Name</label>
+          <input type="text" class="form-input" id="ts-tailnet" placeholder="e.g. boredkevin.org.github">
+        </div>
+        <div class="form-group">
+          <label>Tailscale API Key</label>
+          <input type="password" class="form-input" id="ts-api-key" placeholder="tskey-api-...">
+        </div>
+      </div>
+
+      <div id="ts-fields-oauth" style="display:none;">
+        <div class="form-group">
+          <label>OAuth Client ID</label>
+          <input type="text" class="form-input" id="ts-oauth-id" placeholder="k...">
+        </div>
+        <div class="form-group">
+          <label>OAuth Client Secret</label>
+          <input type="password" class="form-input" id="ts-oauth-secret" placeholder="tskey-client-...">
+        </div>
+      </div>
+
+      <div class="form-group" style="display:flex; align-items:center; gap:8px; margin-top:16px;">
+        <input type="checkbox" id="ts-auto-inject" checked>
+        <label for="ts-auto-inject" style="margin-bottom:0; cursor:pointer;">Automatically inject into worker one-liner commands</label>
+      </div>
+
+      <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="ts-ephemeral" checked>
+        <label for="ts-ephemeral" style="margin-bottom:0; cursor:pointer;">Auto-register workers as ephemeral nodes (cleans up automatically on disconnect)</label>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn" onclick="closeTailscaleModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTailscaleConfig()">Save Configuration</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. CREATE TRANSACTION MODAL -->
+  <div class="modal-overlay" id="modal-new-tx">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">New Duplication Transaction</div>
+        <button class="modal-close" onclick="closeNewTxModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Quick Preset</label>
+        <select class="form-select" id="tx-preset" onchange="applyTxPreset()">
+          <option value="raw-gdrive" selected>⚡ Raw Google Drive Mirror (boredkevinmedia:crypt ➔ 1337quota:crypt)</option>
+          <option value="raw-terabox">⚡ Raw Terabox Mirror (boredkevinmedia:crypt ➔ tb:crypt)</option>
+          <option value="crypt-terabox">🔐 Decrypted Terabox Mirror (bkc:library ➔ tbc:library)</option>
+          <option value="crypt-1337quota">🔐 Decrypted 1337quota Mirror (bkc:library ➔ 1qc:library)</option>
+          <option value="custom">⚙️ Custom Remote / Path...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Transaction Title</label>
+        <input type="text" class="form-input" id="tx-title" value="Raw Mirror: boredkevinmedia:crypt ➔ 1337quota:crypt">
+      </div>
+      <div class="form-group">
+        <label>Source Remote / Path</label>
+        <input type="text" class="form-input" id="tx-source" value="boredkevinmedia:crypt">
+      </div>
+      <div class="form-group">
+        <label>Destination Remote / Path</label>
+        <input type="text" class="form-input" id="tx-dest" value="1337quota:crypt" list="dest-remotes-list">
+        <datalist id="dest-remotes-list"></datalist>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label>Transfer Mode</label>
+          <select class="form-select" id="tx-mode">
+            <option value="copy" selected>copy (Safe - adds/updates files)</option>
+            <option value="sync">sync (Mirrors dest to match src)</option>
+            <option value="check">check (Verifies integrity only)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select class="form-select" id="tx-priority">
+            <option value="normal" selected>Normal</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Rclone Flags (Space-separated)</label>
+        <input type="text" class="form-input" id="tx-flags" value="--transfers=8 --checkers=16 --fast-list --drive-server-side-across-configs">
+        <div class="form-hint" id="tx-flags-hint">Drive-to-Drive optimized flags with fast-list and multi-stream transfers.</div>
+      </div>
+      <div class="form-group">
+        <label>Notes (Optional)</label>
+        <input type="text" class="form-input" id="tx-notes" placeholder="e.g. Raw bit-for-bit encrypted mirror">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeNewTxModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCreateTx()">Create Transaction</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. EDIT TRANSACTION MODAL -->
+  <div class="modal-overlay" id="modal-edit-tx">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">Edit Duplication Transaction</div>
+        <button class="modal-close" onclick="closeEditTxModal()">✕</button>
+      </div>
+      <input type="hidden" id="edit-tx-id">
+      <div class="form-group">
+        <label>Transaction Title</label>
+        <input type="text" class="form-input" id="edit-tx-title">
+      </div>
+      <div class="form-group">
+        <label>Source Remote / Path</label>
+        <input type="text" class="form-input" id="edit-tx-source">
+      </div>
+      <div class="form-group">
+        <label>Destination Remote / Path</label>
+        <input type="text" class="form-input" id="edit-tx-dest">
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label>Transfer Mode</label>
+          <select class="form-select" id="edit-tx-mode">
+            <option value="copy">copy</option>
+            <option value="sync">sync</option>
+            <option value="check">check</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select class="form-select" id="edit-tx-priority">
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Rclone Flags</label>
+        <input type="text" class="form-input" id="edit-tx-flags">
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" class="form-input" id="edit-tx-notes">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeEditTxModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitEditTx()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. WORKER EDIT / PRE-REGISTER MODAL -->
+  <div class="modal-overlay" id="modal-worker">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="worker-modal-title">Pre-Register Worker</div>
+        <button class="modal-close" onclick="closeWorkerModal()">✕</button>
+      </div>
+      <input type="hidden" id="worker-modal-id">
+      <div class="form-group">
+        <label>Worker Friendly Name</label>
+        <input type="text" class="form-input" id="worker-name" placeholder="e.g. Google Cloud Shell #1">
+      </div>
+      <div class="form-group">
+        <label>Notes / Environment</label>
+        <input type="text" class="form-input" id="worker-notes" placeholder="e.g. Spot VM US-Central1">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeWorkerModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitWorkerModal()">Save Worker</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

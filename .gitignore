@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment and sensitive credential files
+.env
+*.env
+*.conf
+rclone.conf
+tailscale_config.json
+*.key
+*.pem
+
+# Runtime database & persistent state (Kept on host disk)
+duplication_transactions.json*
+workers_registry.json*
+
+# Immich Storage & Postgres DB
+local-data/
+postgres/
+model-cache/
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.tmp
