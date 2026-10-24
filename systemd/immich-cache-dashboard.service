@@ -1,14 +1,15 @@
 [Unit]
-Description=Immich Cache Dashboard Web UI & Duplication Manager
-After=network.target rclone-gda.service
+Description=Immich Cache Dashboard Web UI (Legacy compatibility alias for Immiclone)
+After=network.target network-online.target immiclone-rclone.service rclone-gda.service
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
-# Adjust path to where the repository or symlink is installed
-ExecStart=/usr/bin/python3 /usr/local/bin/immich-cache-dashboard.py
+ExecStart=/usr/bin/python3 /usr/local/bin/immiclone
 Restart=always
 RestartSec=5
+EnvironmentFile=-/etc/default/immiclone
 
 [Install]
 WantedBy=multi-user.target
