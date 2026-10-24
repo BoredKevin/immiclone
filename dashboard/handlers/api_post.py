@@ -1,6 +1,13 @@
 import time
 import urllib.parse
-from dashboard.config import STATE_LOCK
+from dashboard.config import (
+    STATE_LOCK,
+    get_app_config,
+    save_app_config,
+    save_preset,
+    delete_preset,
+    get_primary_remote
+)
 from dashboard.services.tailscale import (
     load_tailscale_config,
     save_tailscale_config,
@@ -31,19 +38,56 @@ from dashboard.services.transactions import (
     record_worker_telemetry,
     get_transaction_by_id
 )
+from dashboard.services.updater import check_for_updates
 
 class PostRoutesMixin:
-    """POST Request routing mixin for DashboardHandler."""
+    """POST Request routing mixin for DashboardHandler supporting canonical /api/v1/ routes."""
 
     def handle_post(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         req_data = self.read_json_body()
 
+        canonical_path = self.normalize_api_path(path)
+
+        # -------------------------------------------------------------
+        # APPLICATION UPDATES CHECKER TRIGGER
+        # -------------------------------------------------------------
+        if canonical_path == "/api/v1/updates/check":
+            info = check_for_updates(force=True)
+            self.send_json(info)
+            return
+
+        # -------------------------------------------------------------
+        # APPLICATION SETTINGS & PRESETS CRUD
+        # -------------------------------------------------------------
+        elif canonical_path == "/api/v1/settings" or canonical_path == "/api/v1/settings/save":
+            current_cfg = get_app_config()
+            if "general" in req_data and isinstance(req_data["general"], dict):
+                current_cfg["general"].update(req_data["general"])
+            if "storage" in req_data and isinstance(req_data["storage"], dict):
+                current_cfg["storage"].update(req_data["storage"])
+            save_app_config(current_cfg)
+            self.send_json({"status": "ok", "settings": current_cfg})
+            return
+
+        elif canonical_path == "/api/v1/presets/save":
+            saved = save_preset(req_data)
+            self.send_json({"status": "ok", "preset": saved})
+            return
+
+        elif canonical_path == "/api/v1/presets/delete":
+            pid = req_data.get("id", "")
+            if delete_preset(pid):
+                self.send_json({"status": "ok"})
+            else:
+                self.send_error_msg(404, "Preset Not Found")
+            return
+
         # -------------------------------------------------------------
         # TAILSCALE CONFIGURATION CRUD
         # -------------------------------------------------------------
-        if path == "/api/tailscale/save":
+        elif canonical_path == "/api/v1/tailscale/save":
             cfg = load_tailscale_config()
             cfg["mode"] = req_data.get("mode", cfg.get("mode", "auth_key"))
             if req_data.get("auth_key"):
@@ -64,7 +108,7 @@ class PostRoutesMixin:
             self.send_json({"status": "ok"})
             return
 
-        elif path == "/api/tailscale/delete":
+        elif canonical_path == "/api/v1/tailscale/delete":
             empty_cfg = {
                 "mode": "auth_key",
                 "auth_key": "",
@@ -81,7 +125,7 @@ class PostRoutesMixin:
             self.send_json({"status": "ok"})
             return
 
-        elif path == "/api/tailscale/test":
+        elif canonical_path == "/api/v1/tailscale/test":
             resp = test_tailscale_connection()
             self.send_json(resp)
             return
@@ -89,22 +133,23 @@ class PostRoutesMixin:
         # -------------------------------------------------------------
         # WORKER CRUD
         # -------------------------------------------------------------
-        elif path == "/api/worker/create-session":
+        elif canonical_path == "/api/v1/worker/create-session":
             name = req_data.get("name")
             notes = req_data.get("notes")
             include_ts = req_data.get("include_tailscale", True)
-            session = create_worker_session(name=name, notes=notes, include_tailscale=include_ts)
+            host_header = self.headers.get("Host")
+            session = create_worker_session(name=name, notes=notes, include_tailscale=include_ts, request_host=host_header)
             self.send_json(session)
             return
 
-        elif path == "/api/worker/create":
+        elif canonical_path == "/api/v1/worker/create":
             name = req_data.get("name")
             notes = req_data.get("notes", "")
             wid = create_custom_worker(name=name, notes=notes)
             self.send_json({"status": "ok", "worker_id": wid})
             return
 
-        elif path == "/api/worker/update":
+        elif canonical_path == "/api/v1/worker/update":
             wid = req_data.get("worker_id", "")
             updates = {}
             if "name" in req_data: updates["name"] = req_data["name"]
@@ -115,7 +160,7 @@ class PostRoutesMixin:
                 self.send_error_msg(404, "Worker Not Found")
             return
 
-        elif path == "/api/worker/disconnect":
+        elif canonical_path == "/api/v1/worker/disconnect":
             wid = req_data.get("worker_id", "")
             if disconnect_worker(wid):
                 self.send_json({"status": "ok"})
@@ -123,7 +168,7 @@ class PostRoutesMixin:
                 self.send_error_msg(404, "Worker Not Found")
             return
 
-        elif path == "/api/worker/reset":
+        elif canonical_path == "/api/v1/worker/reset":
             wid = req_data.get("worker_id", "")
             if reset_worker(wid):
                 self.send_json({"status": "ok"})
@@ -131,7 +176,7 @@ class PostRoutesMixin:
                 self.send_error_msg(404, "Worker Not Found")
             return
 
-        elif path == "/api/worker/delete":
+        elif canonical_path == "/api/v1/worker/delete":
             wid = req_data.get("worker_id", "")
             if delete_worker(wid):
                 self.send_json({"status": "ok"})
@@ -139,19 +184,21 @@ class PostRoutesMixin:
                 self.send_error_msg(404, "Worker Not Found")
             return
 
-        elif path == "/api/worker/prune-offline":
+        elif canonical_path == "/api/v1/worker/prune-offline":
             removed = prune_offline_workers()
             self.send_json({"status": "ok", "removed": removed})
             return
 
-        elif path == "/api/worker/register":
+        elif canonical_path == "/api/v1/worker/register":
             wid = req_data.get("worker_id", "")
             hostname = req_data.get("hostname", "unknown")
+            client_ip = self.client_address[0] if getattr(self, "client_address", None) else "unknown"
+            print(f"[+] Worker connected: {wid} ({hostname}) from {client_ip}")
             register_worker(wid, hostname)
             self.send_json({"status": "ok", "message": "Registered"})
             return
 
-        elif path == "/api/worker/report":
+        elif canonical_path == "/api/v1/worker/report":
             wid = req_data.get("worker_id", "")
             tx_id = req_data.get("tx_id", "")
             reported_lease = req_data.get("lease_id", 0)
@@ -182,8 +229,9 @@ class PostRoutesMixin:
         # -------------------------------------------------------------
         # DUPLICATION TRANSACTIONS CRUD
         # -------------------------------------------------------------
-        elif path == "/api/tx/create":
-            src = req_data.get("source", "bkc:library")
+        elif canonical_path == "/api/v1/tx/create":
+            default_src = f"{get_primary_remote()}library"
+            src = req_data.get("source") or default_src
             dst = req_data.get("dest", "tbc:library")
             title = req_data.get("title")
             mode = req_data.get("mode", "copy")
@@ -203,7 +251,7 @@ class PostRoutesMixin:
             self.send_json({"status": "ok", "tx": tx})
             return
 
-        elif path == "/api/tx/update":
+        elif canonical_path == "/api/v1/tx/update":
             tx_id = req_data.get("tx_id", "")
             updates = {}
             for field in ("title", "source", "dest", "mode", "priority", "rclone_flags", "notes"):
@@ -215,7 +263,7 @@ class PostRoutesMixin:
                 self.send_error_msg(404, "Transaction Not Found")
             return
 
-        elif path == "/api/tx/assign":
+        elif canonical_path == "/api/v1/tx/assign":
             tx_id = req_data.get("tx_id", "")
             wid = req_data.get("worker_id", "")
             with STATE_LOCK:
@@ -231,7 +279,7 @@ class PostRoutesMixin:
             self.send_error_msg(400, "Invalid Transaction or Worker")
             return
 
-        elif path == "/api/tx/pause":
+        elif canonical_path == "/api/v1/tx/pause":
             tx_id = req_data.get("tx_id", "")
             with STATE_LOCK:
                 tx = get_transaction_by_id(tx_id)
@@ -248,7 +296,7 @@ class PostRoutesMixin:
             self.send_error_msg(404, "Transaction Not Found")
             return
 
-        elif path == "/api/tx/requeue":
+        elif canonical_path == "/api/v1/tx/requeue":
             tx_id = req_data.get("tx_id", "")
             with STATE_LOCK:
                 tx = get_transaction_by_id(tx_id)
@@ -265,7 +313,7 @@ class PostRoutesMixin:
             self.send_error_msg(404, "Transaction Not Found")
             return
 
-        elif path == "/api/tx/reset-progress":
+        elif canonical_path == "/api/v1/tx/reset-progress":
             tx_id = req_data.get("tx_id", "")
             if reset_transaction_progress(tx_id):
                 self.send_json({"status": "ok"})
@@ -273,7 +321,7 @@ class PostRoutesMixin:
                 self.send_error_msg(404, "Transaction Not Found")
             return
 
-        elif path == "/api/tx/cancel":
+        elif canonical_path == "/api/v1/tx/cancel":
             tx_id = req_data.get("tx_id", "")
             with STATE_LOCK:
                 tx = get_transaction_by_id(tx_id)
@@ -290,7 +338,7 @@ class PostRoutesMixin:
             self.send_error_msg(404, "Transaction Not Found")
             return
 
-        elif path == "/api/tx/delete":
+        elif canonical_path == "/api/v1/tx/delete":
             tx_id = req_data.get("tx_id", "")
             if delete_transaction(tx_id):
                 self.send_json({"status": "ok"})
@@ -298,7 +346,7 @@ class PostRoutesMixin:
                 self.send_error_msg(404, "Transaction Not Found")
             return
 
-        elif path == "/api/tx/clear-completed":
+        elif canonical_path == "/api/v1/tx/clear-completed":
             cleared = clear_completed_transactions()
             self.send_json({"status": "ok", "cleared": cleared})
             return

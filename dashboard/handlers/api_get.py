@@ -2,7 +2,14 @@ import os
 import json
 import time
 import urllib.parse
-from dashboard.config import RCLONE_CONF_PATH, STATE_LOCK
+from dashboard.config import (
+    STATE_LOCK,
+    WORKER_SCRIPT_PATH,
+    get_app_config,
+    get_presets,
+    get_rclone_conf_path,
+    get_version_metadata
+)
 from dashboard.services.scanner import (
     get_live_sse_payload,
     get_paginated_media,
@@ -15,17 +22,59 @@ from dashboard.services.workers import (
     get_worker,
     verify_worker_token
 )
+from dashboard.services.updater import get_update_status, check_for_updates
 
 class GetRoutesMixin:
-    """GET Request routing mixin for DashboardHandler."""
+    """GET Request routing mixin for DashboardHandler supporting canonical /api/v1/ routes."""
 
     def handle_get(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
-        # 1. SSE STREAM (Live 500ms Telemetry Broadcast)
-        if path == "/api/stream":
+        # 1. SERVE WORKER SCRIPT DIRECTLY (Zero-CDN, Self-Contained Runner)
+        if path == "/worker.sh":
+            if os.path.exists(WORKER_SCRIPT_PATH):
+                try:
+                    with open(WORKER_SCRIPT_PATH, "rb") as f:
+                        content = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/x-shellscript; charset=utf-8")
+                    self.send_header("Content-Length", str(len(content)))
+                    self.send_header("Cache-Control", "no-cache")
+                    self.end_headers()
+                    self.wfile.write(content)
+                    return
+                except Exception as e:
+                    print(f"[!] Error reading worker.sh: {e}")
+                    self.send_error_msg(500, "Error reading worker script")
+                    return
+            else:
+                self.send_error_msg(404, "worker.sh not found")
+                return
+
+        # 2. STATIC ASSET SERVING
+        elif path.startswith("/static/"):
+            rel_path = path[len("/static/"):]
+            self.serve_static(rel_path)
+            return
+
+        # Canonicalize API version: /api/* -> /api/v1/*
+        canonical_path = self.normalize_api_path(path)
+
+        # 3. APPLICATION VERSION & SEMVER METADATA
+        if canonical_path == "/api/v1/version":
+            self.send_json(get_version_metadata())
+            return
+
+        # 4. APPLICATION UPDATE STATUS & CHECKER
+        elif canonical_path == "/api/v1/updates":
+            force = query.get("force", ["false"])[0].lower() in ("true", "1")
+            self.send_json(check_for_updates(force=force) if force else get_update_status())
+            return
+
+        # 5. SSE STREAM (Live 500ms Telemetry Broadcast)
+        elif canonical_path == "/api/v1/stream":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
@@ -45,8 +94,25 @@ class GetRoutesMixin:
                 pass
             return
 
-        # 2. PAGINATED MEDIA CATALOG API
-        elif path == "/api/media":
+        # 6. APPLICATION SETTINGS API
+        elif canonical_path == "/api/v1/settings":
+            cfg = get_app_config()
+            self.send_json({
+                "general": cfg.get("general", {}),
+                "storage": cfg.get("storage", {}),
+                "presets": cfg.get("presets", []),
+                "detected_remotes": get_available_remotes()
+            })
+            return
+
+        # 7. DUPLICATION PRESETS LIST API
+        elif canonical_path == "/api/v1/presets":
+            presets = get_presets()
+            self.send_json({"presets": presets})
+            return
+
+        # 8. PAGINATED MEDIA CATALOG API
+        elif canonical_path == "/api/v1/media":
             page = int(query.get("page", ["1"])[0])
             limit = int(query.get("limit", ["50"])[0])
             filter_type = query.get("filter", ["all"])[0]
@@ -56,8 +122,8 @@ class GetRoutesMixin:
             self.send_json(data)
             return
 
-        # 3. TAILSCALE CONFIGURATION
-        elif path == "/api/tailscale/config":
+        # 9. TAILSCALE CONFIGURATION
+        elif canonical_path == "/api/v1/tailscale/config":
             cfg = load_tailscale_config()
             resp = {
                 "mode": cfg.get("mode", "auth_key"),
@@ -71,26 +137,26 @@ class GetRoutesMixin:
             self.send_json(resp)
             return
 
-        # 4. AVAILABLE REMOTES LIST
-        elif path == "/api/worker/remotes":
+        # 10. AVAILABLE REMOTES LIST
+        elif canonical_path == "/api/v1/worker/remotes":
             remotes = get_available_remotes()
             self.send_json({"remotes": remotes})
             return
 
-        # 5. TRANSACTIONS LIST
-        elif path == "/api/tx/list":
+        # 11. TRANSACTIONS LIST
+        elif canonical_path == "/api/v1/tx/list":
             tx_list = load_transactions()
             self.send_json(tx_list)
             return
 
-        # 6. WORKERS LIST
-        elif path == "/api/workers":
+        # 12. WORKERS LIST
+        elif canonical_path == "/api/v1/workers":
             workers = load_workers()
             self.send_json(workers)
             return
 
-        # 7. WORKER POLL ENDPOINT (Polled by worker.sh every 1s)
-        elif path == "/api/worker/poll":
+        # 13. WORKER POLL ENDPOINT (Polled by worker.sh every 1s)
+        elif canonical_path == "/api/v1/worker/poll":
             wid = query.get("id", [""])[0]
             with STATE_LOCK:
                 worker = get_worker(wid)
@@ -136,13 +202,14 @@ class GetRoutesMixin:
             self.send_json(resp)
             return
 
-        # 8. SERVE RCLONE CONFIG TO AUTHORIZED RUNNER (IN VOLATILE RAM)
-        elif path == "/api/worker/config":
+        # 14. SERVE RCLONE CONFIG TO AUTHORIZED RUNNER (IN VOLATILE RAM)
+        elif canonical_path == "/api/v1/worker/config":
             wid = query.get("id", [""])[0]
             token = query.get("token", [""])[0]
-            if verify_worker_token(wid, token) and os.path.exists(RCLONE_CONF_PATH):
+            conf_path = get_rclone_conf_path()
+            if verify_worker_token(wid, token) and os.path.exists(conf_path):
                 try:
-                    with open(RCLONE_CONF_PATH, "rb") as f:
+                    with open(conf_path, "rb") as f:
                         conf_bytes = f.read()
                     self.send_response(200)
                     self.send_header("Content-Type", "text/plain")
@@ -156,13 +223,7 @@ class GetRoutesMixin:
             self.send_error_msg(403, "Forbidden")
             return
 
-        # 9. STATIC ASSET SERVING
-        elif path.startswith("/static/"):
-            rel_path = path[len("/static/"):]
-            self.serve_static(rel_path)
-            return
-
-        # 10. ROOT DASHBOARD HTML
+        # 15. ROOT DASHBOARD HTML
         else:
             self.serve_index()
             return
