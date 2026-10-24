@@ -2,7 +2,13 @@ import os
 import json
 import time
 import secrets
-from dashboard.config import WORKERS_STORE_PATH, STATE_LOCK, atomic_write_json
+from dashboard.config import (
+    WORKERS_STORE_PATH,
+    STATE_LOCK,
+    atomic_write_json,
+    get_server_external_url,
+    get_worker_cdn_url
+)
 from dashboard.services.tailscale import get_effective_tailscale_key
 
 # In-memory worker lookup cache (synchronized with WORKERS_STORE_PATH)
@@ -76,7 +82,7 @@ def verify_worker_token(wid, token):
         worker = _active_workers.get(wid)
         return bool(worker and worker.get("token") == token)
 
-def create_worker_session(name=None, notes=None, include_tailscale=True):
+def create_worker_session(name=None, notes=None, include_tailscale=True, request_host=None):
     """Pre-provisions a worker session and generates the ready-to-use one-liner command."""
     wid = f"worker-{secrets.token_hex(2)}"
     tok = secrets.token_urlsafe(16)
@@ -100,17 +106,39 @@ def create_worker_session(name=None, notes=None, include_tailscale=True):
         sync_workers_to_disk()
 
     ts_flag = ""
+    ts_warning = None
     if include_tailscale:
         effective_ts = get_effective_tailscale_key()
         if effective_ts:
             ts_flag = f" --tailscale-key {effective_ts}"
+        else:
+            ts_warning = "Could not generate an active Tailscale auth key. Please verify your Tailscale API Key or Auth Key in settings."
 
-    one_liner = f"curl -sSL https://cdn.bkev.in/babel/worker.sh | bash -s -- --id {wid} --endpoint http://babel.ts.bkev.in:8080 --token {tok}{ts_flag}"
-    return {
+    # Determine server endpoint: configured external URL > Host header > fallback
+    configured_url = get_server_external_url()
+    if configured_url:
+        endpoint = configured_url.rstrip('/')
+    elif request_host:
+        endpoint = f"http://{request_host}"
+    else:
+        endpoint = "http://babel.ts.bkev.in:8080"
+
+    # Determine script URL: configured CDN > self-hosted on dashboard
+    cdn_url = get_worker_cdn_url()
+    if cdn_url:
+        script_url = cdn_url
+    else:
+        script_url = f"{endpoint}/worker.sh"
+
+    one_liner = f"curl -sSL {script_url} | bash -s -- --id {wid} --endpoint {endpoint} --token {tok}{ts_flag}"
+    resp = {
         "worker_id": wid,
         "token": tok,
         "one_liner": one_liner
     }
+    if ts_warning:
+        resp["warning"] = ts_warning
+    return resp
 
 def create_custom_worker(name, notes=""):
     """Pre-registers a worker with custom friendly metadata."""

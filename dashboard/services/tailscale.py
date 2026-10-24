@@ -3,6 +3,7 @@ import json
 import time
 import urllib.request
 import urllib.parse
+import urllib.error
 from dashboard.config import TAILSCALE_CONF_PATH, STATE_LOCK, atomic_write_json
 
 def load_tailscale_config():
@@ -23,7 +24,7 @@ def load_tailscale_config():
             "tailnet": "",
             "auto_inject": True,
             "ephemeral": True,
-            "tags": ["tag:worker"],
+            "tags": [], # Default to untagged unless explicitly specified by user ACL
             "last_updated": 0
         }
 
@@ -40,6 +41,35 @@ def mask_secret(s):
     if len(s) <= 8:
         return "••••••••"
     return f"{s[:6]}••••••••{s[-4:]}"
+
+def _request_tailscale_key(tailnet, bearer_token, ephemeral=True, tags=None):
+    """Internal helper to request an ephemeral auth key from Tailscale API."""
+    url = f"https://api.tailscale.com/api/v2/tailnet/{tailnet}/keys"
+    create_device = {
+        "reusable": False,
+        "ephemeral": ephemeral,
+        "preauthorized": True
+    }
+    if tags and isinstance(tags, list) and len(tags) > 0:
+        create_device["tags"] = tags
+
+    body = {
+        "capabilities": {
+            "devices": {
+                "create": create_device
+            }
+        },
+        "expirySeconds": 3600
+    }
+    req = urllib.request.Request(
+        url,
+        headers={"Authorization": f"Bearer {bearer_token}", "Content-Type": "application/json"},
+        data=json.dumps(body).encode(),
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=8) as resp:
+        res = json.loads(resp.read().decode())
+        return res.get("key", "")
 
 def get_effective_tailscale_key():
     """Returns an active auth key: stored static key, or freshly generated via Tailscale API."""
@@ -68,36 +98,34 @@ def get_effective_tailscale_key():
                 res = json.loads(resp.read().decode())
                 bearer_token = res.get("access_token", "")
         except Exception as e:
-            print(f"[!] OAuth token error: {e}")
+            print(f"[!] OAuth token exchange error: {e}")
             return auth_key
     elif api_key:
         bearer_token = api_key
 
     if bearer_token:
+        configured_tags = cfg.get("tags")
+        # Attempt key generation with configured tags (if present)
         try:
-            url = f"https://api.tailscale.com/api/v2/tailnet/{tailnet}/keys"
-            body = {
-                "capabilities": {
-                    "devices": {
-                        "create": {
-                            "reusable": False,
-                            "ephemeral": cfg.get("ephemeral", True),
-                            "preauthorized": True,
-                            "tags": cfg.get("tags", ["tag:worker"])
-                        }
-                    }
-                },
-                "expirySeconds": 3600
-            }
-            req = urllib.request.Request(
-                url,
-                headers={"Authorization": f"Bearer {bearer_token}", "Content-Type": "application/json"},
-                data=json.dumps(body).encode(),
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=8) as resp:
-                res = json.loads(resp.read().decode())
-                return res.get("key", auth_key)
+            key = _request_tailscale_key(tailnet, bearer_token, cfg.get("ephemeral", True), tags=configured_tags)
+            if key:
+                return key
+        except urllib.error.HTTPError as e:
+            err_msg = ""
+            try:
+                err_msg = e.read().decode()
+            except:
+                pass
+            print(f"[!] Tailscale API error ({e.code}): {err_msg}")
+            # If tags were rejected by Tailscale ACL (HTTP 400), automatically retry untagged
+            if configured_tags and e.code == 400:
+                print("[!] Retrying Tailscale key creation without tags...")
+                try:
+                    key = _request_tailscale_key(tailnet, bearer_token, cfg.get("ephemeral", True), tags=None)
+                    if key:
+                        return key
+                except Exception as retry_err:
+                    print(f"[!] Tailscale key retry error: {retry_err}")
         except Exception as e:
             print(f"[!] Generate key error: {e}")
 
@@ -111,4 +139,4 @@ def test_tailscale_connection():
     elif key:
         return {"status": "SUCCESS", "message": f"Key present: {mask_secret(key)}"}
     else:
-        return {"status": "EMPTY", "message": "No active Tailscale key configured."}
+        return {"status": "ERROR", "message": "Failed to obtain active Tailscale key. Check API key, OAuth, or ACL policy."}
