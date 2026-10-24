@@ -1,0 +1,35 @@
+  <!-- 4. WORKER EDIT / PRE-REGISTER MODAL -->
+  <div class="modal-overlay" id="modal-worker">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="worker-modal-title">
+          <svg class="icon" viewBox="0 0 24 24">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          Pre-Register Worker
+        </div>
+        <button class="modal-close" data-action="close-modal" data-target="worker">
+          <svg class="icon" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <input type="hidden" id="worker-modal-id">
+      <div class="form-group">
+        <label>Worker Friendly Name</label>
+        <input type="text" class="form-input" id="worker-name" placeholder="e.g. Google Cloud Shell #1">
+      </div>
+      <div class="form-group">
+        <label>Notes / Environment</label>
+        <input type="text" class="form-input" id="worker-notes" placeholder="e.g. Spot VM US-Central1">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-action="close-modal" data-target="worker">Cancel</button>
+        <button class="btn btn-primary" data-action="submit-worker-modal">Save Worker</button>
+      </div>
+    </div>
+  </div>

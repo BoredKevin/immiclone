@@ -1,0 +1,75 @@
+  <!-- 2. CREATE TRANSACTION MODAL -->
+  <div class="modal-overlay" id="modal-new-tx">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">
+          <svg class="icon" viewBox="0 0 24 24">
+            <polyline points="16 16 12 12 8 16"></polyline>
+            <line x1="12" y1="12" x2="12" y2="21"></line>
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+          </svg>
+          New Duplication Transaction
+        </div>
+        <button class="modal-close" data-action="close-modal" data-target="new-tx">
+          <svg class="icon" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="form-group">
+        <label>Quick Preset</label>
+        <select class="form-select" id="tx-preset" data-change="apply-preset">
+          <option value="raw-gdrive" selected>Raw Google Drive Mirror (boredkevinmedia:crypt → 1337quota:crypt)</option>
+          <option value="raw-terabox">Raw Terabox Mirror (boredkevinmedia:crypt → tb:crypt)</option>
+          <option value="crypt-terabox">Decrypted Terabox Mirror (bkc:library → tbc:library)</option>
+          <option value="crypt-1337quota">Decrypted 1337quota Mirror (bkc:library → 1qc:library)</option>
+          <option value="custom">Custom Remote / Path...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Transaction Title</label>
+        <input type="text" class="form-input" id="tx-title" value="Raw Mirror">
+      </div>
+      <div class="form-group">
+        <label>Source Remote / Path</label>
+        <input type="text" class="form-input mono" id="tx-source" value="boredkevinmedia:crypt">
+      </div>
+      <div class="form-group">
+        <label>Destination Remote / Path</label>
+        <input type="text" class="form-input mono" id="tx-dest" value="1337quota:crypt" list="dest-remotes-list">
+        <datalist id="dest-remotes-list"></datalist>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label>Transfer Mode</label>
+          <select class="form-select" id="tx-mode">
+            <option value="copy" selected>copy (Safe - adds/updates files)</option>
+            <option value="sync">sync (Mirrors dest to match src)</option>
+            <option value="check">check (Verifies integrity only)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select class="form-select" id="tx-priority">
+            <option value="normal" selected>Normal</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Rclone Flags (Space-separated)</label>
+        <input type="text" class="form-input mono" id="tx-flags" value="--transfers=8 --checkers=16 --fast-list --drive-server-side-across-configs">
+        <div class="form-hint" id="tx-flags-hint">Drive-to-Drive optimized flags with fast-list and multi-stream transfers.</div>
+      </div>
+      <div class="form-group">
+        <label>Notes (Optional)</label>
+        <input type="text" class="form-input" id="tx-notes" placeholder="e.g. Bit-for-bit encrypted cold mirror">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-action="close-modal" data-target="new-tx">Cancel</button>
+        <button class="btn btn-primary" data-action="submit-create-tx">Create Transaction</button>
+      </div>
+    </div>
+  </div>

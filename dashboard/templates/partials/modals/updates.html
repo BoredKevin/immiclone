@@ -1,0 +1,82 @@
+  <!-- 6. APPLICATION VERSION & UPDATE CHECKER MODAL -->
+  <div class="modal-overlay" id="modal-updates">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">
+          <svg class="icon" viewBox="0 0 24 24">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          System Version & Updates
+        </div>
+        <button class="modal-close" data-action="close-modal" data-target="updates">
+          <svg class="icon" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Current System Metadata Card -->
+      <div class="card" style="margin-bottom:16px; padding:16px; background:var(--well);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div>
+            <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:600; letter-spacing:0.5px;">Installed Version</div>
+            <div style="font-size:20px; font-weight:700; color:var(--heading);" class="mono" id="update-cur-version">v1.0.0</div>
+          </div>
+          <div class="status-cell">
+            <span class="status-dot dot-green" id="update-status-dot"></span>
+            <span style="font-weight:600; color:var(--heading);" id="update-status-text">Up to Date</span>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:12px;">
+          <div>
+            <span style="color:var(--text-muted);">Git Commit:</span>
+            <code class="mono" id="update-cur-commit">6375510</code>
+          </div>
+          <div>
+            <span style="color:var(--text-muted);">Branch:</span>
+            <span class="mono" id="update-cur-branch">main</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Update Status Message -->
+      <div class="form-group">
+        <label>Update Status</label>
+        <div id="update-status-msg" style="font-size:13px; color:var(--text); line-height:1.5;">
+          Checking upstream repository...
+        </div>
+      </div>
+
+      <!-- Remote Commit Details Box (toggled when update available) -->
+      <div class="card hidden" id="update-details-box" style="margin-bottom:16px; padding:12px 14px; background:rgba(245, 158, 11, 0.04); border-color:rgba(245, 158, 11, 0.2);">
+        <div style="font-size:11px; text-transform:uppercase; color:var(--amber); font-weight:600; margin-bottom:6px;">Available Upstream Changes</div>
+        <div id="update-commit-msg" style="font-size:13px; font-weight:500; color:var(--heading); margin-bottom:4px;">-</div>
+        <div id="update-commit-meta" style="font-size:11px; color:var(--text-muted);">-</div>
+      </div>
+
+      <div style="font-size:11px; color:var(--text-dim); margin-bottom:16px;">
+        Last checked: <span id="update-last-checked">Just now</span> • Repository: <code class="mono">BoredKevin/immiclone</code>
+      </div>
+
+      <div class="modal-footer">
+        <a href="https://github.com/BoredKevin/immiclone" target="_blank" rel="noreferrer" class="btn btn-sm" style="margin-right:auto;">
+          View on GitHub
+          <svg class="icon icon-sm" viewBox="0 0 24 24">
+            <line x1="7" y1="17" x2="17" y2="7"></line>
+            <polyline points="7 7 17 7 17 17"></polyline>
+          </svg>
+        </a>
+        <button class="btn" data-action="close-modal" data-target="updates">Close</button>
+        <button class="btn btn-primary" data-action="check-updates">
+          <svg class="icon icon-sm" viewBox="0 0 24 24">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Check for Updates
+        </button>
+      </div>
+    </div>
+  </div>

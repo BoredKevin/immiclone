@@ -1,10 +1,18 @@
 import os
 import json
+import re
 import http.server
 from dashboard.config import STATIC_DIR, TEMPLATES_DIR
+from dashboard.handlers.renderer import render_template
 
 class BaseHandler(http.server.BaseHTTPRequestHandler):
     """Base HTTP Request Handler with response helpers and path-traversal guarded static delivery."""
+
+    def normalize_api_path(self, path):
+        """Rewrites legacy /api/<path> to canonical /api/v1/<path> transparently."""
+        if path.startswith("/api/") and not re.match(r"^/api/v\d+(/|$)", path):
+            return "/api/v1" + path[len("/api"):]
+        return path
 
     def send_json(self, data, status=200):
         """Sends a JSON response with status code."""
@@ -80,11 +88,9 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
             self.send_error_msg(500, "Internal Server Error")
 
     def serve_index(self):
-        """Serves index.html from templates directory."""
-        index_file = os.path.join(TEMPLATES_DIR, "index.html")
-        if os.path.isfile(index_file):
-            with open(index_file, "r", encoding="utf-8") as f:
-                content = f.read()
+        """Serves index.html with recursive partials assembled and cached."""
+        content = render_template("index.html")
+        if content and not content.startswith("<!-- Template not found"):
             self.send_text(content, content_type="text/html; charset=utf-8")
         else:
             self.send_error_msg(404, "Index template not found")

@@ -1,0 +1,63 @@
+  <!-- 3. EDIT TRANSACTION MODAL -->
+  <div class="modal-overlay" id="modal-edit-tx">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+          Edit Duplication Transaction
+        </div>
+        <button class="modal-close" data-action="close-modal" data-target="edit-tx">
+          <svg class="icon" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <input type="hidden" id="edit-tx-id">
+      <div class="form-group">
+        <label>Transaction Title</label>
+        <input type="text" class="form-input" id="edit-tx-title">
+      </div>
+      <div class="form-group">
+        <label>Source Remote / Path</label>
+        <input type="text" class="form-input mono" id="edit-tx-source">
+      </div>
+      <div class="form-group">
+        <label>Destination Remote / Path</label>
+        <input type="text" class="form-input mono" id="edit-tx-dest">
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label>Transfer Mode</label>
+          <select class="form-select" id="edit-tx-mode">
+            <option value="copy">copy</option>
+            <option value="sync">sync</option>
+            <option value="check">check</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select class="form-select" id="edit-tx-priority">
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Rclone Flags</label>
+        <input type="text" class="form-input mono" id="edit-tx-flags">
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" class="form-input" id="edit-tx-notes">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-action="close-modal" data-target="edit-tx">Cancel</button>
+        <button class="btn btn-primary" data-action="submit-edit-tx">Save Changes</button>
+      </div>
+    </div>
+  </div>
