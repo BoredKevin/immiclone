@@ -3,7 +3,13 @@ import json
 import time
 import secrets
 from datetime import datetime
-from dashboard.config import TX_STORE_PATH, STATE_LOCK, atomic_write_json, format_size
+from dashboard.config import (
+    TX_STORE_PATH,
+    STATE_LOCK,
+    atomic_write_json,
+    format_size,
+    get_primary_remote
+)
 
 def load_transactions():
     """Loads transactions from disk."""
@@ -45,8 +51,10 @@ def update_transaction(tx_id, updates):
             save_transactions(tx_list)
         return found
 
-def create_transaction(source="bkc:library", dest="tbc:library", title=None, mode="copy", priority="normal", rclone_flags=None, notes=""):
+def create_transaction(source=None, dest="tbc:library", title=None, mode="copy", priority="normal", rclone_flags=None, notes=""):
     """Creates a new duplication transaction."""
+    if not source:
+        source = f"{get_primary_remote()}library"
     tx_id = f"dup-{datetime.now().strftime('%Y%m%d')}-{secrets.token_hex(2)}"
     new_tx = {
         "tx_id": tx_id,

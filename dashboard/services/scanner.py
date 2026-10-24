@@ -5,9 +5,13 @@ import json
 import urllib.request
 from datetime import datetime
 from dashboard.config import (
-    MOUNT_BASE,
-    CACHE_BASE,
-    RCLONE_CONF_PATH,
+    get_mount_base,
+    get_cache_base,
+    get_rclone_conf_path,
+    get_rclone_rc_url,
+    get_primary_remote,
+    get_vfs_cache_max_gb,
+    get_version_metadata,
     SCAN_LOCK,
     STATE_LOCK,
     format_size
@@ -15,6 +19,7 @@ from dashboard.config import (
 from dashboard.services.workers import get_all_workers
 from dashboard.services.transactions import load_transactions
 from dashboard.services.tailscale import load_tailscale_config, mask_secret
+from dashboard.services.updater import get_update_status
 
 _meta_cache = {
     "files": [],
@@ -25,11 +30,12 @@ _meta_cache = {
 }
 
 def get_available_remotes():
-    """Parses available remotes from rclone.conf."""
+    """Parses available remotes from rclone.conf or falls back to empty list."""
     remotes = []
-    if os.path.exists(RCLONE_CONF_PATH):
+    conf_path = get_rclone_conf_path()
+    if os.path.exists(conf_path):
         try:
-            with open(RCLONE_CONF_PATH, "r", encoding="utf-8") as f:
+            with open(conf_path, "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line.startswith("[") and line.endswith("]"):
@@ -40,8 +46,9 @@ def get_available_remotes():
     return remotes
 
 def query_rclone(endpoint, payload=None):
-    """Sends a JSON query to the local Rclone RC instance on port 5572."""
-    url = f"http://localhost:5572/{endpoint}"
+    """Sends a JSON query to the configured Rclone RC instance."""
+    rc_base = get_rclone_rc_url().rstrip('/')
+    url = f"{rc_base}/{endpoint}"
     data = json.dumps(payload).encode() if payload else b"{}"
     req = urllib.request.Request(url, headers={"Content-Type": "application/json"}, data=data)
     try:
@@ -57,18 +64,21 @@ def scan_files_if_needed():
     if now - _meta_cache["last_scan"] < 10 and _meta_cache["files"]:
         return
 
+    mount_path = get_mount_base()
+    cache_path = get_cache_base()
+
     with SCAN_LOCK:
         if now - _meta_cache["last_scan"] < 10 and _meta_cache["files"]:
             return
 
         cached_paths = set()
         cached_bytes = 0
-        if os.path.exists(CACHE_BASE):
-            for root, _, files in os.walk(CACHE_BASE):
+        if os.path.exists(cache_path):
+            for root, _, files in os.walk(cache_path):
                 for f in files:
                     if f.startswith("."): continue
                     full_path = os.path.join(root, f)
-                    rel_path = os.path.relpath(full_path, CACHE_BASE)
+                    rel_path = os.path.relpath(full_path, cache_path)
                     cached_paths.add(rel_path)
                     try:
                         cached_bytes += os.path.getsize(full_path)
@@ -76,12 +86,12 @@ def scan_files_if_needed():
                         pass
 
         file_list = []
-        if os.path.exists(MOUNT_BASE):
-            for root, _, files in os.walk(MOUNT_BASE):
+        if os.path.exists(mount_path):
+            for root, _, files in os.walk(mount_path):
                 for f in files:
                     if f.startswith("."): continue
                     full_path = os.path.join(root, f)
-                    rel_path = os.path.relpath(full_path, MOUNT_BASE)
+                    rel_path = os.path.relpath(full_path, mount_path)
                     try:
                         sz = os.path.getsize(full_path)
                         mtime = os.path.getmtime(full_path)
@@ -178,7 +188,9 @@ def get_live_sse_payload():
                 "eta": t.get("eta", 0)
             })
 
-    cloud_info = query_rclone("operations/about", {"fs": "bkc:"}) or {}
+    # Dynamic primary remote quota inspection
+    primary_rem = get_primary_remote()
+    cloud_info = query_rclone("operations/about", {"fs": primary_rem}) or {}
     cloud_total = cloud_info.get("total", 0)
     cloud_used = cloud_info.get("used", 0)
     cloud_free = cloud_info.get("free", 0)
@@ -188,6 +200,12 @@ def get_live_sse_payload():
     cached_count = _meta_cache["cached_count"]
     cloud_count = _meta_cache["cloud_count"]
     total_count = len(_meta_cache["files"])
+
+    # Dynamic VFS cache limit calculation
+    vfs_limit_gb = get_vfs_cache_max_gb()
+    vfs_limit_bytes = vfs_limit_gb * (1024 ** 3)
+    cache_limit_str = f"{vfs_limit_gb:.1f} GB"
+    cache_percent = round((cached_bytes / vfs_limit_bytes) * 100, 1) if vfs_limit_bytes > 0 else 0
 
     with STATE_LOCK:
         tx_list = load_transactions()
@@ -203,6 +221,15 @@ def get_live_sse_payload():
             "ephemeral": ts_cfg.get("ephemeral", True)
         }
 
+    primary_cloud_data = {
+        "remote": primary_rem,
+        "total": format_size(cloud_total),
+        "used": format_size(cloud_used),
+        "free": format_size(cloud_free),
+        "trashed": format_size(cloud_trashed),
+        "percent_used": round((cloud_used / cloud_total) * 100, 1) if cloud_total else 0
+    }
+
     return {
         "summary": {
             "total_files": total_count,
@@ -210,8 +237,8 @@ def get_live_sse_payload():
             "cloud_files": cloud_count,
             "cached_size": format_size(cached_bytes),
             "cached_bytes": cached_bytes,
-            "cache_limit": "10.0 GB",
-            "cache_percent": round((cached_bytes / (10 * 1024**3)) * 100, 1),
+            "cache_limit": cache_limit_str,
+            "cache_percent": cache_percent,
             "disk_free": format_size(disk_free),
             "disk_total": format_size(disk_total)
         },
@@ -222,16 +249,11 @@ def get_live_sse_payload():
                 "free": format_size(disk_free),
                 "percent_used": round((disk_used / disk_total) * 100, 1) if disk_total else 0,
                 "vfs_cache_used": format_size(cached_bytes),
-                "vfs_cache_limit": "10.0 GB",
-                "vfs_cache_percent": round((cached_bytes / (10 * 1024**3)) * 100, 1)
+                "vfs_cache_limit": cache_limit_str,
+                "vfs_cache_percent": cache_percent
             },
-            "cloud_bkc": {
-                "total": format_size(cloud_total),
-                "used": format_size(cloud_used),
-                "free": format_size(cloud_free),
-                "trashed": format_size(cloud_trashed),
-                "percent_used": round((cloud_used / cloud_total) * 100, 1) if cloud_total else 0
-            }
+            "primary_cloud": primary_cloud_data,
+            "cloud_bkc": primary_cloud_data # Backwards-compatible alias for existing frontend code
         },
         "rclone": {
             "speed": speed_str,
@@ -242,5 +264,7 @@ def get_live_sse_payload():
         },
         "transactions": tx_list,
         "workers": workers_list,
-        "tailscale": ts_status
+        "tailscale": ts_status,
+        "version": get_version_metadata(),
+        "updates": get_update_status()
     }

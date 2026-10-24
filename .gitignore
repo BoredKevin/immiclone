@@ -15,6 +15,9 @@ tailscale_config.json
 # Runtime database & persistent state (Kept on host disk)
 duplication_transactions.json*
 workers_registry.json*
+app_config.json*
+data/
+.agents/
 
 # Immich Storage & Postgres DB
 local-data/
