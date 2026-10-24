@@ -45,4 +45,29 @@ def main():
             print("\n[!] Shutting down server...")
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        arg = sys.argv[1].strip()
+        if arg in ("--mount", "mount"):
+            from dashboard.services.mount import run_rclone_mount
+            run_rclone_mount()
+            sys.exit(0)
+        elif arg in ("--mount-check", "mount-check"):
+            from dashboard.services.mount import check_rclone_mount
+            check_rclone_mount()
+            sys.exit(0)
+        elif arg in ("--unmount", "unmount"):
+            from dashboard.services.mount import run_rclone_unmount
+            run_rclone_unmount()
+            sys.exit(0)
+        elif arg in ("--version", "-v"):
+            from dashboard.config import APP_VERSION, API_VERSION
+            print(f"Immiclone v{APP_VERSION} (API {API_VERSION})")
+            sys.exit(0)
+        elif arg in ("--help", "-h"):
+            print("Usage: immiclone [OPTIONS]")
+            print("  (default)    Start Immiclone Web Dashboard and Duplication Control Center")
+            print("  --mount      Start Rclone VFS mount using config from Immiclone dashboard")
+            print("  --unmount    Unmount configured Immiclone storage mount base")
+            print("  --version    Display application version metadata")
+            sys.exit(0)
     main()

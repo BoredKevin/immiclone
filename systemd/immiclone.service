@@ -1,6 +1,6 @@
 [Unit]
 Description=Immiclone Storage & Duplication Control Center
-After=network.target network-online.target immiclone-rclone.service rclone-gda.service
+After=network.target network-online.target immiclone-rclone.service
 Wants=network-online.target
 
 [Service]
@@ -13,4 +13,3 @@ EnvironmentFile=-/etc/default/immiclone
 
 [Install]
 WantedBy=multi-user.target
-Alias=immich-cache-dashboard.service
