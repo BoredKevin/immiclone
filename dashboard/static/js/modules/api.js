@@ -59,7 +59,7 @@ export const clearCompletedTx = () => apiPost(`${API_PREFIX}/tx/clear-completed`
 
 // Workers
 export const fetchWorkers = () => apiGet(`${API_PREFIX}/workers`);
-export const createWorkerSession = (includeTs) => apiPost(`${API_PREFIX}/worker/create-session`, { include_tailscale: includeTs });
+export const createWorkerSession = (includeTs, forceFresh = false) => apiPost(`${API_PREFIX}/worker/create-session`, { include_tailscale: includeTs, force_fresh: forceFresh });
 export const createWorker = (payload) => apiPost(`${API_PREFIX}/worker/create`, payload);
 export const updateWorker = (payload) => apiPost(`${API_PREFIX}/worker/update`, payload);
 export const disconnectWorker = (wid) => apiPost(`${API_PREFIX}/worker/disconnect`, { worker_id: wid });

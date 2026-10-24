@@ -85,7 +85,7 @@ def verify_worker_token(wid, token):
         worker = _active_workers.get(wid)
         return bool(worker and worker.get("token") == token)
 
-def create_worker_session(name=None, notes=None, include_tailscale=True, request_host=None):
+def create_worker_session(name=None, notes=None, include_tailscale=True, request_host=None, force_fresh=False):
     """Pre-provisions a worker session and generates the ready-to-use one-liner command."""
     wid = f"worker-{secrets.token_hex(2)}"
     tok = secrets.token_urlsafe(16)
@@ -111,7 +111,7 @@ def create_worker_session(name=None, notes=None, include_tailscale=True, request
     ts_flag = ""
     ts_warning = None
     if include_tailscale:
-        effective_ts = get_effective_tailscale_key()
+        effective_ts = get_effective_tailscale_key(force_fresh=force_fresh)
         if effective_ts:
             ts_flag = f" --tailscale-key {effective_ts}"
         else:

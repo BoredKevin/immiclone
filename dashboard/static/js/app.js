@@ -8,6 +8,7 @@ import { startSSE, getLatestPayload } from './modules/sse.js';
 import {
   setTxFilter,
   setWorkerFilter,
+  initWorkerCmdBar,
   regenerateWorkerCmd,
   copyWorkerCmd
 } from './modules/duplication.js';
@@ -90,7 +91,7 @@ registerAction('submit-edit-tx', () => submitEditTx());
 registerAction('submit-worker-modal', () => submitWorkerModal());
 
 // Ephemeral Worker One-Liner
-registerAction('new-session', () => regenerateWorkerCmd());
+registerAction('new-session', () => regenerateWorkerCmd(true));
 registerAction('copy-worker-cmd', (data, target) => copyWorkerCmd(target));
 
 // Duplication Transactions List Actions
@@ -211,7 +212,11 @@ registerAction('change-page', (data) => changePage(parseInt(data.delta, 10) || 0
 // ==========================================================================
 // Change Registrations ([data-change])
 // ==========================================================================
-registerChange('toggle-auto-ts', () => regenerateWorkerCmd());
+registerChange('toggle-auto-ts', () => {
+  if (sessionStorage.getItem('immiclone_worker_cmd')) {
+    regenerateWorkerCmd(false);
+  }
+});
 registerChange('toggle-ts-mode', () => toggleTsMode());
 
 // ==========================================================================
@@ -225,7 +230,7 @@ registerInput('search-media', (val) => onSearchInput(val));
 function initApp() {
   initEventDelegation();
   startSSE();
-  regenerateWorkerCmd();
+  initWorkerCmdBar();
 }
 
 if (document.readyState === 'loading') {

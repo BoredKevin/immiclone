@@ -123,8 +123,9 @@ class PostRoutesMixin:
             name = req_data.get("name")
             notes = req_data.get("notes")
             include_ts = req_data.get("include_tailscale", True)
+            force_fresh = bool(req_data.get("force_fresh", False))
             host_header = self.headers.get("Host")
-            session = create_worker_session(name=name, notes=notes, include_tailscale=include_ts, request_host=host_header)
+            session = create_worker_session(name=name, notes=notes, include_tailscale=include_ts, request_host=host_header, force_fresh=force_fresh)
             self.send_json(session)
             return
 

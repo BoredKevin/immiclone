@@ -275,21 +275,48 @@ export function renderWorkers(workers) {
   });
 }
 
-export async function regenerateWorkerCmd() {
+const STORAGE_KEY = 'immiclone_worker_cmd';
+
+export function initWorkerCmdBar() {
+  const saved = sessionStorage.getItem(STORAGE_KEY);
+  const displayEl = document.getElementById('worker-cmd-display');
+  if (saved) {
+    fullWorkerCommand = saved;
+    if (displayEl) {
+      displayEl.innerHTML = formatCommandHtml(saved);
+      displayEl.title = 'Hover over blurred keys to reveal. Click Copy Command to copy the full command.';
+    }
+  } else {
+    // Show standby placeholder without generating a new session or minting an auth key
+    if (displayEl) {
+      displayEl.innerHTML = '<span style="color:var(--text-muted);">curl -sSL https://raw.githubusercontent.com/BoredKevin/immiclone/refs/heads/main/worker/worker-stable.sh | bash <em>(Click &ldquo;Copy Command&rdquo; or &ldquo;New Session&rdquo; to launch)</em></span>';
+      displayEl.title = 'Click Copy Command or New Session to generate a runner session';
+    }
+  }
+}
+
+export async function regenerateWorkerCmd(forceFresh = false) {
   const chk = document.getElementById('chk-auto-ts');
   const includeTs = chk ? chk.checked : true;
+  const displayEl = document.getElementById('worker-cmd-display');
+  if (displayEl) {
+    displayEl.innerHTML = '<span style="color:var(--text-dim);">Initializing runner session...</span>';
+  }
   try {
-    const data = await api.createWorkerSession(includeTs);
+    const data = await api.createWorkerSession(includeTs, forceFresh);
     fullWorkerCommand = data.one_liner || '';
-    const displayEl = document.getElementById('worker-cmd-display');
+    if (fullWorkerCommand) {
+      sessionStorage.setItem(STORAGE_KEY, fullWorkerCommand);
+    }
     if (displayEl) {
       displayEl.innerHTML = formatCommandHtml(fullWorkerCommand);
       displayEl.title = 'Hover over blurred keys to reveal. Click Copy Command to copy the full command.';
     }
+    return fullWorkerCommand;
   } catch (e) {
     fullWorkerCommand = 'curl -sSL https://raw.githubusercontent.com/BoredKevin/immiclone/refs/heads/main/worker/worker-stable.sh | bash';
-    const displayEl = document.getElementById('worker-cmd-display');
     if (displayEl) displayEl.innerHTML = formatCommandHtml(fullWorkerCommand);
+    return fullWorkerCommand;
   }
 }
 
@@ -331,7 +358,14 @@ export async function copyToClipboard(text) {
 }
 
 export async function copyWorkerCmd(targetBtn) {
-  const cmd = fullWorkerCommand || (document.getElementById('worker-cmd-display')?.innerText || document.getElementById('worker-cmd-display')?.textContent || '');
+  let cmd = fullWorkerCommand;
+  if (!cmd) {
+    // Generate session on-demand if user copies before generating
+    cmd = await regenerateWorkerCmd(false);
+  }
+  if (!cmd) {
+    cmd = document.getElementById('worker-cmd-display')?.innerText || '';
+  }
   if (!cmd) return;
 
   const ok = await copyToClipboard(cmd);

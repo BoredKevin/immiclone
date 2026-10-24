@@ -71,14 +71,23 @@ def _request_tailscale_key(tailnet, bearer_token, ephemeral=True, tags=None):
         res = json.loads(resp.read().decode())
         return res.get("key", "")
 
-def get_effective_tailscale_key():
+_cached_generated_key = None
+_cached_key_time = 0
+
+def get_effective_tailscale_key(ephemeral=True, force_fresh=False):
     """Returns an active auth key: stored static key, or freshly generated via Tailscale API."""
+    global _cached_generated_key, _cached_key_time
     cfg = load_tailscale_config()
     mode = cfg.get("mode", "auth_key")
     auth_key = cfg.get("auth_key", "").strip()
 
     if mode == "auth_key" and auth_key:
         return auth_key
+
+    # Re-use unexpired cached key unless fresh generation is requested (cache for 1 hour)
+    now = time.time()
+    if not force_fresh and _cached_generated_key and (now - _cached_key_time < 3600):
+        return _cached_generated_key
 
     api_key = cfg.get("api_key", "").strip()
     client_id = cfg.get("oauth_client_id", "").strip()
@@ -109,6 +118,8 @@ def get_effective_tailscale_key():
         try:
             key = _request_tailscale_key(tailnet, bearer_token, cfg.get("ephemeral", True), tags=configured_tags)
             if key:
+                _cached_generated_key = key
+                _cached_key_time = time.time()
                 return key
         except urllib.error.HTTPError as e:
             err_msg = ""
@@ -123,6 +134,8 @@ def get_effective_tailscale_key():
                 try:
                     key = _request_tailscale_key(tailnet, bearer_token, cfg.get("ephemeral", True), tags=None)
                     if key:
+                        _cached_generated_key = key
+                        _cached_key_time = time.time()
                         return key
                 except Exception as retry_err:
                     print(f"[!] Tailscale key retry error: {retry_err}")
