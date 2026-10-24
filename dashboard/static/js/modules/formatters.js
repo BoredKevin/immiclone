@@ -25,11 +25,16 @@ export function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+export function formatCommandHtml(cmd) {
+  if (!cmd) return '';
+  return escapeHtml(cmd)
+    .replace(/(--token\s+)([^\s|&]+)/g, '$1<span class="sensitive-blur" title="Hover to reveal token">$2</span>')
+    .replace(/(--tailscale-key\s+)([^\s|&]+)/g, '$1<span class="sensitive-blur" title="Hover to reveal Tailscale key">$2</span>');
+}
+
 export function maskCommandSecret(cmd) {
   if (!cmd) return '';
-  return cmd
-    .replace(/(--token\s+)([^\s|&]+)/g, '$1••••••••')
-    .replace(/(--tailscale-key\s+)([^\s|&]+)/g, '$1••••••••');
+  return formatCommandHtml(cmd);
 }
 
 /**

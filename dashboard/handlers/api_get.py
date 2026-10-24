@@ -5,6 +5,7 @@ import urllib.parse
 from dashboard.config import (
     STATE_LOCK,
     WORKER_SCRIPT_PATH,
+    WORKER_STABLE_SCRIPT_PATH,
     get_app_config,
     get_rclone_conf_path,
     get_version_metadata
@@ -31,11 +32,14 @@ class GetRoutesMixin:
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
-        # 1. SERVE WORKER SCRIPT DIRECTLY (Zero-CDN, Self-Contained Runner)
-        if path == "/worker.sh":
-            if os.path.exists(WORKER_SCRIPT_PATH):
+        # 1. SERVE WORKER SCRIPTS DIRECTLY (Zero-CDN, Self-Contained Runner)
+        if path in ("/worker.sh", "/worker-stable.sh"):
+            target_path = WORKER_STABLE_SCRIPT_PATH if path == "/worker-stable.sh" else WORKER_SCRIPT_PATH
+            if not os.path.exists(target_path):
+                target_path = WORKER_SCRIPT_PATH
+            if os.path.exists(target_path):
                 try:
-                    with open(WORKER_SCRIPT_PATH, "rb") as f:
+                    with open(target_path, "rb") as f:
                         content = f.read()
                     self.send_response(200)
                     self.send_header("Content-Type", "text/x-shellscript; charset=utf-8")
@@ -45,11 +49,11 @@ class GetRoutesMixin:
                     self.wfile.write(content)
                     return
                 except Exception as e:
-                    print(f"[!] Error reading worker.sh: {e}")
+                    print(f"[!] Error reading worker script ({path}): {e}")
                     self.send_error_msg(500, "Error reading worker script")
                     return
             else:
-                self.send_error_msg(404, "worker.sh not found")
+                self.send_error_msg(404, "Worker script not found")
                 return
 
         # 2. STATIC ASSET SERVING

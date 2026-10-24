@@ -260,7 +260,10 @@
           </span>
         </td>
         <td>
-          <strong style="color:var(--heading); font-size:13px;" data-bind="name">Worker</strong>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <strong style="color:var(--heading); font-size:13px;" data-bind="name">Worker</strong>
+            <span class="badge" data-bind="version-badge" style="font-size:10px; padding:1px 5px; border-radius:4px;">v1.0.1</span>
+          </div>
           <div class="mono" style="font-size:11px; color:var(--text-muted);" data-bind="id"></div>
         </td>
         <td class="mono" style="font-size:12px;" data-bind="hostname">-</td>

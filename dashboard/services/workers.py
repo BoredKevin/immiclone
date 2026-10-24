@@ -3,6 +3,7 @@ import json
 import time
 import secrets
 from dashboard.config import (
+    APP_VERSION,
     WORKERS_STORE_PATH,
     STATE_LOCK,
     atomic_write_json,
@@ -63,6 +64,8 @@ def get_all_workers():
                 "id": w["id"],
                 "name": w.get("name", w["id"]),
                 "hostname": w.get("hostname", "unknown"),
+                "version": w.get("version", APP_VERSION),
+                "version_match": (w.get("version") == APP_VERSION if w.get("version") else True),
                 "status": w.get("status", "STANDBY"),
                 "current_tx": w.get("current_tx"),
                 "notes": w.get("notes", ""),
@@ -123,12 +126,12 @@ def create_worker_session(name=None, notes=None, include_tailscale=True, request
     else:
         endpoint = "http://localhost:8080"
 
-    # Determine script URL: configured CDN > self-hosted on dashboard
+    # Determine script URL: configured CDN > default stable runner on GitHub
     cdn_url = get_worker_cdn_url()
     if cdn_url:
         script_url = cdn_url
     else:
-        script_url = f"{endpoint}/worker.sh"
+        script_url = "https://raw.githubusercontent.com/BoredKevin/immiclone/refs/heads/main/worker/worker-stable.sh"
 
     one_liner = f"curl -sSL {script_url} | bash -s -- --id {wid} --endpoint {endpoint} --token {tok}{ts_flag}"
     resp = {
@@ -150,6 +153,7 @@ def create_custom_worker(name, notes=""):
             "name": name or f"Worker {wid}",
             "token": tok,
             "hostname": "Pending connection...",
+            "version": APP_VERSION,
             "status": "STANDBY",
             "last_seen": time.time(),
             "current_tx": None,
@@ -161,7 +165,7 @@ def create_custom_worker(name, notes=""):
         sync_workers_to_disk()
     return wid
 
-def register_worker(wid, hostname="unknown"):
+def register_worker(wid, hostname="unknown", version=None):
     """Registers or updates a worker handshake on connection."""
     with STATE_LOCK:
         if wid not in _active_workers:
@@ -170,6 +174,7 @@ def register_worker(wid, hostname="unknown"):
                 "name": f"Worker {wid}",
                 "token": "",
                 "hostname": hostname,
+                "version": version or APP_VERSION,
                 "status": "STANDBY",
                 "last_seen": time.time(),
                 "current_tx": None,
@@ -179,6 +184,8 @@ def register_worker(wid, hostname="unknown"):
             }
         else:
             _active_workers[wid]["hostname"] = hostname
+            if version:
+                _active_workers[wid]["version"] = version
             _active_workers[wid]["status"] = "STANDBY"
             _active_workers[wid]["last_seen"] = time.time()
         sync_workers_to_disk()

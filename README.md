@@ -57,7 +57,7 @@ This sets up the dashboard service and starts it on port `8080`.
 4. Open a free [Google Cloud Shell](https://shell.cloud.google.com/) (or any Linux machine/VPS) and paste the command:
 
 ```bash
-curl -sSL http://your-server-ip:8080/worker.sh | bash -s -- --id worker-1234 --endpoint http://your-server-ip:8080 --token abc123xyz
+curl -sSL https://raw.githubusercontent.com/BoredKevin/immiclone/refs/heads/main/worker/worker-stable.sh | bash -s -- --id worker-1234 --endpoint http://your-server-ip:8080 --token abc123xyz
 ```
 
 5. The worker connects to your dashboard. Click **▶ Assign** on your job, and watch the transfer fly at gigabit speeds!

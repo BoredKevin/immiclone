@@ -601,6 +601,27 @@ header {
   background: linear-gradient(90deg, transparent, #050608 15%);
 }
 
+/* Sensitive token & key hover reveal */
+.sensitive-blur {
+  filter: blur(5px);
+  user-select: all;
+  transition: filter 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, color 0.2s ease;
+  padding: 1px 6px;
+  margin: 0 1px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  display: inline-block;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+.sensitive-blur:hover {
+  filter: blur(0);
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
 /* ==========================================================================
    Section Headers & Filter Chips
    ========================================================================== */

@@ -5,7 +5,7 @@ import threading
 import subprocess
 
 # Application Versioning & Semantic Version Standard
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 API_VERSION = "v1"
 
 # Base Directories (using realpath to resolve any symlinks cleanly)
@@ -14,6 +14,7 @@ REPO_DIR = os.path.dirname(DASHBOARD_DIR)
 TEMPLATES_DIR = os.path.join(DASHBOARD_DIR, "templates")
 STATIC_DIR = os.path.join(DASHBOARD_DIR, "static")
 WORKER_SCRIPT_PATH = os.path.join(REPO_DIR, "worker", "worker.sh")
+WORKER_STABLE_SCRIPT_PATH = os.path.join(REPO_DIR, "worker", "worker-stable.sh")
 
 def get_git_info():
     """Resolves current git commit SHA and active branch with disk fallbacks."""

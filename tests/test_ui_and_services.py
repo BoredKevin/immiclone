@@ -269,7 +269,7 @@ class TestLiveDashboardServer(unittest.TestCase):
         with urllib.request.urlopen(url_ver, timeout=3) as resp:
             self.assertEqual(resp.status, 200)
             data = json.loads(resp.read().decode("utf-8"))
-            self.assertEqual(data.get("version"), "1.0.0")
+            self.assertEqual(data.get("version"), "1.0.1")
             self.assertEqual(data.get("api_version"), "v1")
             self.assertIn("semver", data)
             self.assertIn("git", data)
@@ -313,7 +313,7 @@ class TestLiveDashboardServer(unittest.TestCase):
         with urllib.request.urlopen(url_ver_legacy, timeout=3) as resp:
             self.assertEqual(resp.status, 200)
             data = json.loads(resp.read().decode("utf-8"))
-            self.assertEqual(data.get("version"), "1.0.0")
+            self.assertEqual(data.get("version"), "1.0.1")
 
     def test_get_api_v1_media(self):
         url = f"http://127.0.0.1:{TEST_PORT}/api/v1/media?page=1&limit=10"
@@ -330,6 +330,25 @@ class TestLiveDashboardServer(unittest.TestCase):
             self.assertEqual(resp.status, 200)
             body = resp.read()
             self.assertTrue(body.startswith(b"#!/usr/bin/env bash"))
+
+        url_stable = f"http://127.0.0.1:{TEST_PORT}/worker-stable.sh"
+        with urllib.request.urlopen(url_stable, timeout=3) as resp:
+            self.assertEqual(resp.status, 200)
+            body_stable = resp.read()
+            self.assertTrue(body_stable.startswith(b"#!/usr/bin/env bash"))
+
+    def test_worker_create_session_stable_link(self):
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{TEST_PORT}/api/v1/worker/create-session",
+            data=b"{}",
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertIn("one_liner", data)
+            self.assertIn("worker-stable.sh", data["one_liner"])
+            self.assertIn("https://raw.githubusercontent.com/BoredKevin/immiclone", data["one_liner"])
 
 if __name__ == "__main__":
     unittest.main()

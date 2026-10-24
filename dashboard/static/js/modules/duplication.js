@@ -4,7 +4,7 @@
    ========================================================================== */
 
 import { reconcileList, bindText, bindStyle, bindClass, bindHidden, getBoundElement } from './dom.js';
-import { formatRelativeTime, populateFlagPills, maskCommandSecret, escapeHtml } from './formatters.js';
+import { formatRelativeTime, populateFlagPills, formatCommandHtml, maskCommandSecret, escapeHtml } from './formatters.js';
 import * as api from './api.js';
 
 let currentTxFilter = 'all';
@@ -244,6 +244,23 @@ export function renderWorkers(workers) {
 
     bindText(el, 'name', w.name || w.id);
     bindText(el, 'id', w.id);
+
+    // Semver badge & matching indicator
+    const wVer = w.version || '1.0.1';
+    const verBadge = el.querySelector('[data-bind="version-badge"]');
+    if (verBadge) {
+      verBadge.textContent = wVer.startsWith('v') ? wVer : `v${wVer}`;
+      if (w.version_match !== false) {
+        verBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+        verBadge.style.color = '#34d399';
+        verBadge.title = 'Worker semver matches server';
+      } else {
+        verBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+        verBadge.style.color = '#f87171';
+        verBadge.title = `Worker semver (${wVer}) differs from server`;
+      }
+    }
+
     bindText(el, 'hostname', w.hostname || '-');
     bindText(el, 'current-tx', w.current_tx || '-');
 
@@ -266,25 +283,65 @@ export async function regenerateWorkerCmd() {
     fullWorkerCommand = data.one_liner || '';
     const displayEl = document.getElementById('worker-cmd-display');
     if (displayEl) {
-      displayEl.textContent = maskCommandSecret(fullWorkerCommand);
-      displayEl.title = 'Click Copy One-Liner to copy the exact unmasked command';
+      displayEl.innerHTML = formatCommandHtml(fullWorkerCommand);
+      displayEl.title = 'Hover over blurred keys to reveal. Click Copy Command to copy the full command.';
     }
   } catch (e) {
-    fullWorkerCommand = `curl -sSL ${window.location.origin}/worker.sh | bash`;
+    fullWorkerCommand = 'curl -sSL https://raw.githubusercontent.com/BoredKevin/immiclone/refs/heads/main/worker/worker-stable.sh | bash';
     const displayEl = document.getElementById('worker-cmd-display');
-    if (displayEl) displayEl.textContent = fullWorkerCommand;
+    if (displayEl) displayEl.innerHTML = formatCommandHtml(fullWorkerCommand);
   }
 }
 
-export function copyWorkerCmd(targetBtn) {
-  const cmd = fullWorkerCommand || (document.getElementById('worker-cmd-display')?.textContent || '');
-  navigator.clipboard.writeText(cmd).then(() => {
+export async function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      // Fall through to DOM fallback
+    }
+  }
+
+  // Fallback for non-HTTPS or non-secure contexts (e.g. plain HTTP IP/Tailscale origin)
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.width = '2em';
+    textArea.style.height = '2em';
+    textArea.style.padding = '0';
+    textArea.style.border = 'none';
+    textArea.style.outline = 'none';
+    textArea.style.boxShadow = 'none';
+    textArea.style.background = 'transparent';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.error('Fallback clipboard copy failed:', err);
+    return false;
+  }
+}
+
+export async function copyWorkerCmd(targetBtn) {
+  const cmd = fullWorkerCommand || (document.getElementById('worker-cmd-display')?.innerText || document.getElementById('worker-cmd-display')?.textContent || '');
+  if (!cmd) return;
+
+  const ok = await copyToClipboard(cmd);
+  if (ok) {
     if (targetBtn) {
       const orig = targetBtn.innerHTML;
       targetBtn.innerHTML = '✓ Copied!';
       setTimeout(() => { targetBtn.innerHTML = orig; }, 1800);
     }
-  }).catch(err => {
-    alert('Could not copy command: ' + err);
-  });
+  } else {
+    alert('Could not copy command to clipboard.');
+  }
 }

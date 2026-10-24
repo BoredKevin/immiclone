@@ -1,6 +1,7 @@
 import time
 import urllib.parse
 from dashboard.config import (
+    APP_VERSION,
     STATE_LOCK,
     get_app_config,
     save_app_config,
@@ -177,10 +178,18 @@ class PostRoutesMixin:
         elif canonical_path == "/api/v1/worker/register":
             wid = req_data.get("worker_id", "")
             hostname = req_data.get("hostname", "unknown")
+            worker_version = req_data.get("version") or self.headers.get("X-Worker-Version", "unknown")
             client_ip = self.client_address[0] if getattr(self, "client_address", None) else "unknown"
-            print(f"[+] Worker connected: {wid} ({hostname}) from {client_ip}")
-            register_worker(wid, hostname)
-            self.send_json({"status": "ok", "message": "Registered"})
+            version_match = (worker_version == APP_VERSION)
+            print(f"[+] Worker connected: {wid} ({hostname}, v{worker_version}, match={version_match}) from {client_ip}")
+            register_worker(wid, hostname, version=worker_version)
+            self.send_json({
+                "status": "ok",
+                "message": "Registered",
+                "server_version": APP_VERSION,
+                "worker_version": worker_version,
+                "version_match": version_match
+            })
             return
 
         elif canonical_path == "/api/v1/worker/report":
