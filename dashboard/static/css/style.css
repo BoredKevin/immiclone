@@ -1889,47 +1889,69 @@ tr:hover td {
 
 /* ==========================================================================
    Pinned Active Uploads Card (Unified Workspace)
-   Height-Bounded at 240px with Smooth Scrolling
+   Height-Bounded Table Wrap with Non-Colliding Sticky Headers
    ========================================================================== */
 
 .pinned-uploads-card {
-  max-height: 240px;
-  overflow-y: auto;
   border: 1px solid var(--border);
   border-top-color: var(--border-specular);
   border-radius: 8px;
   background: var(--card);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   margin-bottom: 16px;
+  overflow: hidden;
 }
 
 .pinned-header-bar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
   background: rgba(16, 18, 23, 0.95);
-  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
 
 .pinned-table-wrap {
-  padding: 0 6px 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
 }
 
 .pinned-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: none !important;
+  box-shadow: none !important;
+  margin-bottom: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.pinned-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .pinned-table th {
-  position: sticky;
-  top: 40px;
-  background: var(--card);
+  background: #0b0e14;
   font-size: 11px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.6px;
+  user-select: none;
+}
+
+.pinned-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.pinned-table tr:last-child td {
+  border-bottom: none;
 }
 
 .progress-fill.blue {
