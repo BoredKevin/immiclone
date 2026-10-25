@@ -26,7 +26,7 @@ export function updateVersionAndUpdates(versionData, updatesData) {
   const dot = document.getElementById('header-version-dot');
   const txt = document.getElementById('header-version-text');
 
-  const vTag = latestVersion ? latestVersion.version_tag || `v${latestVersion.version}` : 'v1.1.0';
+  const vTag = latestVersion ? latestVersion.version_tag || `v${latestVersion.version}` : 'v1.2.0';
 
   if (brandVer) {
     if (latestUpdates && latestUpdates.update_available) {

@@ -5,7 +5,7 @@ import threading
 import subprocess
 
 # Application Versioning & Semantic Version Standard
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 API_VERSION = "v1"
 
 # Base Directories (using realpath to resolve any symlinks cleanly)
@@ -108,6 +108,7 @@ DATA_DIR = get_default_data_dir()
 TX_STORE_PATH = os.environ.get("TX_STORE_PATH", os.path.join(DATA_DIR, "duplication_transactions.json"))
 WORKERS_STORE_PATH = os.environ.get("WORKERS_STORE_PATH", os.path.join(DATA_DIR, "workers_registry.json"))
 TAILSCALE_CONF_PATH = os.environ.get("TAILSCALE_CONF_PATH", os.path.join(DATA_DIR, "tailscale_config.json"))
+BANDWIDTH_CONF_PATH = os.environ.get("BANDWIDTH_CONF_PATH", os.path.join(DATA_DIR, "bandwidth_config.json"))
 APP_CONFIG_PATH = os.environ.get("APP_CONFIG_PATH", os.path.join(DATA_DIR, "app_config.json"))
 
 # Storage Mounts & Caching Paths (environment fallbacks)

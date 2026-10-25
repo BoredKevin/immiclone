@@ -11,7 +11,7 @@
         <div>
           <div class="brand-title">Immiclone</div>
           <div class="brand-sub">
-            Infrastructure Control Plane • <span class="brand-version mono clickable" id="brand-version" data-action="open-modal" data-target="updates" title="Click to view Immiclone version and check for updates">v1.1.0</span>
+            Infrastructure Control Plane • <span class="brand-version mono clickable" id="brand-version" data-action="open-modal" data-target="updates" title="Click to view Immiclone version and check for updates">v1.2.0</span>
           </div>
         </div>
       </div>
@@ -24,6 +24,13 @@
             <span class="status-dot dot-amber" id="header-ts-dot"></span>
             <span class="pill-label">Tailscale:</span>
             <span class="pill-val" id="header-ts-text">Checking...</span>
+          </div>
+
+          <!-- Compact Bandwidth & ISP Status Indicator -->
+          <div class="status-pill clickable" id="header-bw-pill" data-action="open-modal" data-target="bandwidth" title="ISP Bandwidth & Monthly Quota">
+            <span class="status-dot dot-blue" id="header-bw-dot"></span>
+            <span class="pill-label">ISP:</span>
+            <span class="pill-val mono tabular-nums" id="header-bw-text">Checking...</span>
           </div>
         </div>
 

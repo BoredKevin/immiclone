@@ -377,7 +377,7 @@ export function renderWorkers(workers) {
     bindText(el, 'notes', w.notes || 'None');
 
     // Semver badge
-    const wVer = w.version || '1.1.0';
+    const wVer = w.version || '1.2.0';
     const verBadge = el.querySelector('[data-bind="version-badge"]');
     if (verBadge) {
       verBadge.textContent = wVer.startsWith('v') ? wVer : `v${wVer}`;

@@ -313,11 +313,11 @@ class TestLiveDashboardServer(unittest.TestCase):
         with urllib.request.urlopen(url_ver, timeout=3) as resp:
             self.assertEqual(resp.status, 200)
             data = json.loads(resp.read().decode("utf-8"))
-            self.assertEqual(data.get("version"), "1.1.0")
+            self.assertEqual(data.get("version"), "1.2.0")
             self.assertEqual(data.get("api_version"), "v1")
             self.assertIn("semver", data)
             self.assertEqual(data["semver"]["major"], 1)
-            self.assertEqual(data["semver"]["minor"], 1)
+            self.assertEqual(data["semver"]["minor"], 2)
             self.assertEqual(data["semver"]["patch"], 0)
             self.assertIn("git", data)
 
@@ -360,7 +360,7 @@ class TestLiveDashboardServer(unittest.TestCase):
         with urllib.request.urlopen(url_ver_legacy, timeout=3) as resp:
             self.assertEqual(resp.status, 200)
             data = json.loads(resp.read().decode("utf-8"))
-            self.assertEqual(data.get("version"), "1.1.0")
+            self.assertEqual(data.get("version"), "1.2.0")
 
     def test_get_api_v1_media(self):
         url = f"http://127.0.0.1:{TEST_PORT}/api/v1/media?page=1&limit=10"

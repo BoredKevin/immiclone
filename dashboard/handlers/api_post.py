@@ -41,6 +41,12 @@ from dashboard.services.transactions import (
 )
 from dashboard.services.updater import check_for_updates
 from dashboard.services.scanner import query_rclone
+from dashboard.services.bandwidth import (
+    load_bandwidth_config,
+    save_bandwidth_config,
+    mask_bandwidth_config,
+    test_provider_connection
+)
 
 class PostRoutesMixin:
     """POST Request routing mixin for DashboardHandler supporting canonical /api/v1/ routes."""
@@ -58,6 +64,27 @@ class PostRoutesMixin:
         if canonical_path == "/api/v1/updates/check":
             info = check_for_updates(force=True)
             self.send_json(info)
+            return
+
+        # -------------------------------------------------------------
+        # BANDWIDTH CONFIGURATION & DIAGNOSTICS
+        # -------------------------------------------------------------
+        elif canonical_path in ("/api/v1/bandwidth/config", "/api/v1/bandwidth/save"):
+            if not isinstance(req_data, dict):
+                self.send_error_msg(400, "Invalid JSON payload")
+                return
+            ok = save_bandwidth_config(req_data)
+            if ok:
+                self.send_json({"status": "success", "config": mask_bandwidth_config(load_bandwidth_config())})
+            else:
+                self.send_error_msg(500, "Failed to save bandwidth configuration")
+            return
+
+        elif canonical_path == "/api/v1/bandwidth/test":
+            pid = req_data.get("provider_id") if isinstance(req_data, dict) else None
+            creds = req_data.get("credentials") if isinstance(req_data, dict) else None
+            diag = test_provider_connection(provider_id=pid, credentials=creds)
+            self.send_json(diag)
             return
 
         # -------------------------------------------------------------

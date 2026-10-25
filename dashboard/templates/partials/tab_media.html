@@ -1,7 +1,10 @@
     <!-- UNIFIED LIBRARY & SYNC ACTIVITY WORKSPACE (STAGES 1 & 2) -->
     <div class="tab-content active" id="content-media">
       
-      <!-- PINNED ACTIVE UPLOADS SECTION (HEIGHT-BOUNDED AT 240PX) -->
+    <!-- UNIFIED 50/50 SPLIT: ACTIVE TRANSFERS & ISP BANDWIDTH MONITOR -->
+    <div class="active-transfers-split-grid" id="active-transfers-split-container">
+      
+      <!-- LEFT (50%): PINNED ACTIVE UPLOADS SECTION -->
       <div class="pinned-uploads-card" id="pinned-uploads-section">
         <div class="pinned-header-bar">
           <div class="section-title">
@@ -31,10 +34,10 @@
           <table class="pinned-table">
             <thead>
               <tr>
-                <th style="width: 48%;">File Name</th>
-                <th style="width: 28%;">Progress / Status</th>
-                <th style="text-align: right; width: 12%;">Speed</th>
-                <th style="text-align: right; width: 12%;">ETA / Status</th>
+                <th style="width: 40%;">File Name</th>
+                <th style="width: 32%;">Progress / Status</th>
+                <th style="text-align: right; width: 14%;">Speed</th>
+                <th style="text-align: right; width: 14%;">ETA</th>
               </tr>
             </thead>
             <tbody id="jobs-table-body">
@@ -43,6 +46,11 @@
           </table>
         </div>
       </div>
+
+      <!-- RIGHT (50%): ISP BANDWIDTH & HEALTH MONITOR CARD -->
+      <!-- include: partials/bandwidth_card.html -->
+
+    </div>
 
       <!-- UNIFIED LIFECYCLE FILTER BAR & CONTROLS -->
       <div class="controls" style="margin-top: 14px;">

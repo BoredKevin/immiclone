@@ -27,6 +27,13 @@ from dashboard.services.workers import (
     verify_worker_token
 )
 from dashboard.services.updater import get_update_status, check_for_updates
+from dashboard.services.bandwidth import (
+    get_cached_bandwidth_status,
+    load_bandwidth_config,
+    mask_bandwidth_config,
+    format_prometheus_metrics,
+    get_provider_classes
+)
 
 class GetRoutesMixin:
     """GET Request routing mixin for DashboardHandler supporting canonical /api/v1/ routes."""
@@ -78,6 +85,34 @@ class GetRoutesMixin:
         elif canonical_path == "/api/v1/updates":
             force = query.get("force", ["false"])[0].lower() in ("true", "1")
             self.send_json(check_for_updates(force=force) if force else get_update_status())
+            return
+
+        # 4.1 BANDWIDTH & ISP STATUS API
+        elif canonical_path == "/api/v1/bandwidth/status":
+            self.send_json(get_cached_bandwidth_status())
+            return
+
+        # 4.2 BANDWIDTH CONFIGURATION API
+        elif canonical_path == "/api/v1/bandwidth/config":
+            cfg = load_bandwidth_config()
+            schemas = {p_id: cls.get_config_schema() for p_id, cls in get_provider_classes().items()}
+            provider_names = {p_id: cls.display_name for p_id, cls in get_provider_classes().items()}
+            self.send_json({
+                "config": mask_bandwidth_config(cfg),
+                "schemas": schemas,
+                "providers": provider_names
+            })
+            return
+
+        # 4.3 BANDWIDTH PROMETHEUS METRICS EXPORTER
+        elif canonical_path == "/api/v1/bandwidth/metrics":
+            metrics_text = format_prometheus_metrics()
+            body_bytes = metrics_text.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+            self.send_header("Content-Length", str(len(body_bytes)))
+            self.end_headers()
+            self.wfile.write(body_bytes)
             return
 
         # 5. SSE STREAM (Live Configurable Telemetry Broadcast)

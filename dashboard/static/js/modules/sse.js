@@ -8,6 +8,7 @@ import { updateMediaSummary } from './media.js';
 import { updateMountStats } from './mount.js';
 import { updateStorageMatrix } from './storage.js';
 import { updateVersionAndUpdates } from './updater.js';
+import { updateBandwidthTelemetry } from './bandwidth.js';
 
 let latestPayload = { transactions: [], workers: [], tailscale: {}, storage: {}, rclone: {}, summary: {}, version: null, updates: null };
 let currentEvtSource = null;
@@ -119,5 +120,10 @@ function dispatchTelemetry(data) {
   // 6. Tab 4: Storage Matrix
   if (data.storage) {
     updateStorageMatrix(data.storage, data.summary);
+  }
+
+  // 7. ISP Bandwidth & Health Telemetry
+  if (data.bandwidth) {
+    updateBandwidthTelemetry(data.bandwidth);
   }
 }

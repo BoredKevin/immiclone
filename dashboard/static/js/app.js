@@ -42,6 +42,12 @@ import {
   submitWorkerModal
 } from './modules/modals.js';
 import { openUpdatesModal, triggerUpdateCheckAction } from './modules/updater.js';
+import {
+  openBandwidthModal,
+  saveBandwidthConfig,
+  testBandwidthConnection,
+  toggleProviderFields
+} from './modules/bandwidth.js';
 import * as api from './modules/api.js';
 
 // ==========================================================================
@@ -102,6 +108,7 @@ registerAction('open-modal', (data) => {
   const target = data.target;
   if (target === 'tailscale') openTailscaleModal();
   else if (target === 'settings') openSettingsModal();
+  else if (target === 'bandwidth') openBandwidthModal();
   else if (target === 'new-tx') openNewTxModal();
   else if (target === 'new-worker') openNewWorkerModal();
   else if (target === 'updates') openUpdatesModal();
@@ -116,6 +123,10 @@ registerAction('check-updates', (data, target) => triggerUpdateCheckAction(targe
 registerAction('save-tailscale', () => saveTailscaleConfig());
 registerAction('delete-tailscale', () => deleteTailscaleKey());
 registerAction('test-tailscale', () => testTailscaleKey());
+
+// Bandwidth Modal Actions
+registerAction('save-bandwidth', () => saveBandwidthConfig());
+registerAction('test-bandwidth', () => testBandwidthConnection());
 
 // Settings Modal Actions
 registerAction('save-settings', () => saveSettingsConfig());
@@ -280,6 +291,7 @@ registerChange('toggle-auto-ts', () => {
   }
 });
 registerChange('toggle-ts-mode', () => toggleTsMode());
+registerChange('change-bw-provider', (data, target) => toggleProviderFields(target.value));
 
 // ==========================================================================
 // Input Registrations ([data-input])

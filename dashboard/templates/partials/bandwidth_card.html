@@ -1,0 +1,71 @@
+      <!-- RIGHT (50%): ISP BANDWIDTH & HEALTH MONITOR CARD -->
+      <div class="pinned-uploads-card bandwidth-monitor-card" id="bandwidth-monitor-section">
+        <div class="pinned-header-bar">
+          <div class="section-title">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" style="color:var(--accent);">
+              <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+              <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+              <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+              <line x1="12" y1="20" x2="12.01" y2="20"></line>
+            </svg>
+            <span>ISP Bandwidth & Health</span>
+            <span class="badge" id="bw-plan-badge" style="font-size:11px; margin-left:8px;">
+              <span class="status-dot dot-blue"></span>
+              <span id="bw-plan-speed-text">100 Mbps Plan</span>
+            </span>
+            <span class="badge badge-running" id="bw-status-badge" style="font-size:11px;">
+              <span class="status-dot dot-green" id="bw-status-dot"></span>
+              <span id="bw-status-text">Online</span>
+            </span>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-sm btn-header" data-action="open-modal" data-target="bandwidth" title="ISP Provider & Telemetry Settings">
+              <svg class="icon icon-xs" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1z"></path></svg>
+              Configure
+            </button>
+          </div>
+        </div>
+
+        <div class="bandwidth-card-content">
+          <div class="bw-metrics-grid">
+            <!-- Metric 1: Monthly Quota -->
+            <div class="bw-metric-box">
+              <div class="bw-metric-label">Monthly Data Quota (FUP)</div>
+              <div class="bw-metric-val tabular-nums" id="bw-quota-remaining">419.1 GB</div>
+              <div class="bw-metric-sub">Remaining of <span class="tabular-nums" id="bw-quota-total">931.3 GB</span> (<span class="tabular-nums" id="bw-quota-pct">45%</span> left)</div>
+              <div class="progress-bar" style="margin-top: 6px;">
+                <div class="progress-fill green" id="bw-quota-bar" style="width: 45%;"></div>
+              </div>
+            </div>
+
+            <!-- Metric 2: Live Upload Saturation -->
+            <div class="bw-metric-box">
+              <div class="bw-metric-label">Live Upload Saturation</div>
+              <div class="bw-metric-val tabular-nums" id="bw-saturation-val">24.1 MB/s</div>
+              <div class="bw-metric-sub"><span class="tabular-nums" id="bw-saturation-pct">100%</span> of <span class="tabular-nums" id="bw-plan-mbps">100 Mbps</span> line cap</div>
+              <div class="progress-bar" style="margin-top: 6px;">
+                <div class="progress-fill blue" id="bw-saturation-bar" style="width: 100%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status & Downtime Detail Row -->
+          <div class="bw-details-row">
+            <div class="bw-detail-item">
+              <span class="bw-detail-label">Quota Cycle:</span>
+              <span class="bw-detail-val tabular-nums" id="bw-reset-text">Resets in 6 days (Nov 01)</span>
+            </div>
+
+            <!-- Extra Field: Last Downtime Reason -->
+            <div class="bw-detail-item bw-downtime-item">
+              <span class="bw-detail-label">Last Downtime:</span>
+              <span class="badge badge-standby" id="bw-downtime-badge" style="font-size:11px; padding: 2px 7px;">
+                <span class="status-dot dot-amber" id="bw-downtime-dot"></span>
+                <span id="bw-downtime-reason">Dying-gasp</span>
+              </span>
+              <span class="bw-detail-sub" id="bw-downtime-sub">Power loss detected by OLT</span>
+            </div>
+          </div>
+        </div>
+      </div>

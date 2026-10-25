@@ -1,0 +1,115 @@
+  <!-- BANDWIDTH & ISP PROVIDER CONFIGURATION MODAL -->
+  <div class="modal-overlay" id="modal-bandwidth">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+          </svg>
+          ISP Bandwidth & Provider Settings
+        </div>
+        <button class="modal-close" data-action="close-modal" data-target="bandwidth" title="Close">
+          <svg class="icon" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Active Provider Selection -->
+      <div class="form-group">
+        <label>Active ISP Provider</label>
+        <select class="form-select" id="bw-provider-select" data-change="change-bw-provider">
+          <option value="biznet" selected>Biznet Home (Automated REST API)</option>
+          <option value="manual">Manual / Static Cap Tracker</option>
+          <option value="indihome" disabled>Telkom IndiHome (Coming Soon)</option>
+        </select>
+        <div class="form-hint">Select your domestic internet service provider for FUP quota and speed tracking.</div>
+      </div>
+
+      <!-- Provider Fields: Biznet -->
+      <div id="bw-fields-biznet">
+        <div class="form-group">
+          <label>Customer / Contract Number</label>
+          <input type="text" class="form-input mono" id="bw-biznet-id" placeholder="000000xxxxxx">
+          <div class="form-hint">Found on your Biznet monthly invoice or MyBiznet profile.</div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Biznet Username / Email</label>
+            <input type="text" class="form-input" id="bw-biznet-user" placeholder="user@example.com">
+          </div>
+          <div class="form-group">
+            <label>Biznet Password</label>
+            <input type="password" class="form-input" id="bw-biznet-pass" placeholder="••••••••">
+          </div>
+        </div>
+      </div>
+
+      <!-- Provider Fields: Manual Tracker -->
+      <div id="bw-fields-manual" style="display:none;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Plan Speed (Mbps)</label>
+            <input type="number" step="10" class="form-input mono" id="bw-manual-speed" placeholder="100">
+          </div>
+          <div class="form-group">
+            <label>Monthly Quota Limit (GB)</label>
+            <input type="number" step="50" class="form-input mono" id="bw-manual-limit" placeholder="1000">
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Quota Remaining (GB)</label>
+            <input type="number" step="10" class="form-input mono" id="bw-manual-rem" placeholder="450">
+          </div>
+          <div class="form-group">
+            <label>Reset Day of Month</label>
+            <input type="number" min="1" max="31" class="form-input mono" id="bw-manual-reset-day" placeholder="1">
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Last Downtime Reason</label>
+            <input type="text" class="form-input mono" id="bw-manual-reason" placeholder="Dying-gasp">
+          </div>
+          <div class="form-group">
+            <label>Downtime Subtext</label>
+            <input type="text" class="form-input" id="bw-manual-sub" placeholder="Power loss detected by OLT">
+          </div>
+        </div>
+      </div>
+
+      <!-- General Polling & Alert Options -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:4px;">
+        <div class="form-group">
+          <label>Polling Interval (Seconds)</label>
+          <input type="number" step="30" class="form-input mono" id="bw-poll-interval" placeholder="300" value="300">
+          <div class="form-hint">Recommended: 300s (5 minutes).</div>
+        </div>
+        <div class="form-group">
+          <label>FUP Low-Quota Warning (%)</label>
+          <input type="number" step="5" class="form-input mono" id="bw-warn-threshold" placeholder="20" value="20">
+          <div class="form-hint">Alerts when remaining quota falls below this percentage.</div>
+        </div>
+      </div>
+
+      <!-- Test Connection Diagnostics Box -->
+      <div id="bw-test-result" style="display:none; margin-top:10px; padding:10px; background:var(--well); border:1px solid var(--border); border-radius:6px; font-size:12px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <strong id="bw-test-status">Testing connection...</strong>
+          <span class="mono tabular-nums" id="bw-test-latency">0ms</span>
+        </div>
+        <div class="mono" id="bw-test-msg" style="color:var(--text-muted); font-size:11px; white-space:pre-wrap;"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn" id="btn-test-bw" data-action="test-bandwidth" style="margin-right:auto;">Test Connection</button>
+        <button class="btn" data-action="close-modal" data-target="bandwidth">Cancel</button>
+        <button class="btn btn-primary" data-action="save-bandwidth">Save Settings</button>
+      </div>
+    </div>
+  </div>

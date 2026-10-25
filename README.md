@@ -8,7 +8,7 @@ Copying hundreds of gigabytes directly from a home server would hog all the home
 
 Immiclone solves this by making  **your server** keep track of what needs copying, how much is done, and shows you a clean dashboard.
 
-Whilst **free cloud runners** (like Google Cloud Console) replicates your files cloud-to-cloud, updates your dashboard in real-time, and vanishes when it's done.
+Whilst **cloud runners** replicates your files cloud-to-cloud, updates your dashboard in real-time, and vanishes when it's done.
 
 ---
 

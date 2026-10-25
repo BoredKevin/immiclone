@@ -1920,6 +1920,7 @@ tr:hover td {
 
 .pinned-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   border: none !important;
@@ -2036,3 +2037,145 @@ tr:hover td {
   border-color: rgba(16, 185, 129, 0.3);
   color: var(--green-light);
 }
+
+/* ==========================================================================
+   50/50 Split Grid: Active Transfers & ISP Bandwidth Monitor
+   ========================================================================== */
+
+.active-transfers-split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+
+.active-transfers-split-grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .active-transfers-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Filename cell truncation inside fixed table layout */
+.pinned-table .file-path-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pinned-table .path-wrap {
+  display: inline-flex;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pinned-table .path-dir {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.pinned-table .path-filename {
+  color: var(--heading);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Bandwidth Card */
+.bandwidth-monitor-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.bandwidth-card-content {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  height: 100%;
+}
+
+.bw-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.bw-metric-box {
+  background: var(--well);
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.bw-metric-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bw-metric-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: -0.3px;
+}
+
+.bw-metric-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.bw-details-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  font-size: 11px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bw-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bw-detail-label {
+  color: var(--text-muted);
+}
+
+.bw-detail-val {
+  color: var(--heading);
+  font-weight: 500;
+}
+
+.bw-detail-sub {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+

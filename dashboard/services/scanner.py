@@ -21,6 +21,7 @@ from dashboard.services.workers import get_all_workers
 from dashboard.services.transactions import load_transactions
 from dashboard.services.tailscale import load_tailscale_config, mask_secret
 from dashboard.services.updater import get_update_status
+from dashboard.services.bandwidth import get_cached_bandwidth_status
 
 _meta_cache = {
     "files": [],
@@ -399,6 +400,8 @@ def get_live_sse_payload():
             "ephemeral": ts_cfg.get("ephemeral", True)
         }
 
+    bw_status = get_cached_bandwidth_status(live_speed)
+
     return {
         "summary": {
             "total_files": total_count,
@@ -423,6 +426,7 @@ def get_live_sse_payload():
             },
             "primary_cloud": primary_cloud_data
         },
+        "bandwidth": bw_status,
         "rclone": {
             "speed": speed_str,
             "speed_bps": live_speed,
