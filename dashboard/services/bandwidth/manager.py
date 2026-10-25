@@ -88,7 +88,7 @@ def save_bandwidth_config(new_config: Dict[str, Any]) -> bool:
         for p_id, p_creds in providers.items():
             if isinstance(p_creds, dict):
                 cur_creds = current.get("providers", {}).get(p_id, {})
-                for field in ("password", "api_token", "secret"):
+                for field in ("password", "api_token", "bearer_token", "secret"):
                     val = str(p_creds.get(field, "")).strip()
                     if val in ("••••••••", "********", "") and cur_creds.get(field):
                         p_creds[field] = cur_creds[field]
@@ -105,7 +105,7 @@ def mask_bandwidth_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     providers = clean.get("providers", {})
     for p_id, p_creds in providers.items():
         if isinstance(p_creds, dict):
-            for field in ("password", "api_token", "secret"):
+            for field in ("password", "api_token", "bearer_token", "secret"):
                 if p_creds.get(field):
                     p_creds[field] = "••••••••"
     return clean
@@ -150,7 +150,7 @@ def test_provider_connection(provider_id: Optional[str] = None, credentials: Opt
     creds = credentials if credentials is not None else cfg.get("providers", {}).get(target_id, {})
     # Unmask password if placeholder was passed
     cur_creds = cfg.get("providers", {}).get(target_id, {})
-    for field in ("password", "api_token", "secret"):
+    for field in ("password", "api_token", "bearer_token", "secret"):
         if creds.get(field) in ("••••••••", "********", "") and cur_creds.get(field):
             creds[field] = cur_creds[field]
 

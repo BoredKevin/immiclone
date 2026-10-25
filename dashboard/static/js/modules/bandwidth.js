@@ -179,9 +179,13 @@ function populateBandwidthModal(payload) {
   const idEl = document.getElementById('bw-biznet-id');
   const userEl = document.getElementById('bw-biznet-user');
   const passEl = document.getElementById('bw-biznet-pass');
+  const bearerEl = document.getElementById('bw-biznet-bearer');
+  const tokenEl = document.getElementById('bw-biznet-token');
   if (idEl) idEl.value = biznet.biznet_id || '';
   if (userEl) userEl.value = biznet.username || '';
   if (passEl) passEl.value = biznet.password || '';
+  if (bearerEl) bearerEl.value = biznet.bearer_token || '';
+  if (tokenEl) tokenEl.value = biznet.api_token || '';
 
   // Populate Manual
   const manual = (cfg.providers && cfg.providers.manual) || {};
@@ -231,7 +235,9 @@ export async function saveBandwidthConfig() {
       biznet: {
         biznet_id: (document.getElementById('bw-biznet-id')?.value || '').trim(),
         username: (document.getElementById('bw-biznet-user')?.value || '').trim(),
-        password: (document.getElementById('bw-biznet-pass')?.value || '').trim()
+        password: (document.getElementById('bw-biznet-pass')?.value || '').trim(),
+        bearer_token: (document.getElementById('bw-biznet-bearer')?.value || '').trim(),
+        api_token: (document.getElementById('bw-biznet-token')?.value || '').trim()
       },
       manual: {
         plan_speed_mbps: parseFloat(document.getElementById('bw-manual-speed')?.value || 100.0),
@@ -283,7 +289,9 @@ export async function testBandwidthConnection() {
     creds = {
       biznet_id: (document.getElementById('bw-biznet-id')?.value || '').trim(),
       username: (document.getElementById('bw-biznet-user')?.value || '').trim(),
-      password: (document.getElementById('bw-biznet-pass')?.value || '').trim()
+      password: (document.getElementById('bw-biznet-pass')?.value || '').trim(),
+      bearer_token: (document.getElementById('bw-biznet-bearer')?.value || '').trim(),
+      api_token: (document.getElementById('bw-biznet-token')?.value || '').trim()
     };
   } else if (activeProvider === 'manual') {
     creds = {

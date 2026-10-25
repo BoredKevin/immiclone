@@ -47,6 +47,15 @@
             <input type="password" class="form-input" id="bw-biznet-pass" placeholder="••••••••">
           </div>
         </div>
+        <div class="form-group">
+          <label>Bearer Token (Authorization Header)</label>
+          <input type="password" class="form-input mono" id="bw-biznet-bearer" placeholder="Bearer token from app.biznet.id">
+          <div class="form-hint">Used for Authorization header across all Biznet V2 endpoints.</div>
+        </div>
+        <div class="form-group">
+          <label>Direct API Token (Optional - Skips login-v2 if provided)</label>
+          <input type="password" class="form-input mono" id="bw-biznet-token" placeholder="Optional direct api-token">
+        </div>
       </div>
 
       <!-- Provider Fields: Manual Tracker -->

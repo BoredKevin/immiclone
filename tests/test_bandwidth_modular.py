@@ -69,7 +69,7 @@ class TestModularBandwidthSystem(unittest.TestCase):
         self.assertGreater(snapshot.reset_timestamp, 0)
 
     def test_03_biznet_provider_mocked_flow(self):
-        """Tests BiznetProvider REST sequence (/login -> /getQuota -> /getBandwidth) with token caching."""
+        """Tests BiznetProvider REST sequence (/login-v2 -> /getQuotaV2 -> /getBandwidthV2 -> /get-detail-modem-v2) with token caching and headers."""
         provider = BiznetProvider()
         self.assertEqual(provider.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36")
 
@@ -89,23 +89,39 @@ class TestModularBandwidthSystem(unittest.TestCase):
                 }
             }
         }).encode("utf-8")
+        modem_resp = json.dumps({
+            "code": 200,
+            "data": {
+                "lastDowntimeReason": "Dying-gasp",
+                "statusDescription": "Power loss detected by OLT"
+            }
+        }).encode("utf-8")
 
         mock_responses = [
             BytesIO(login_resp),
             BytesIO(quota_resp),
-            BytesIO(bw_resp)
+            BytesIO(bw_resp),
+            BytesIO(modem_resp)
         ]
 
         def fake_urlopen(req, timeout=10.0):
-            # Verify User-Agent
+            # Verify User-Agent, Origin, Referer, and Authorization header
             self.assertEqual(req.headers.get("User-agent"), provider.USER_AGENT)
+            self.assertEqual(req.headers.get("Origin"), "https://app.biznet.id")
+            self.assertEqual(req.headers.get("Referer"), "https://app.biznet.id/")
+            self.assertEqual(req.headers.get("Authorization"), "Bearer test-custom-bearer")
             m = MagicMock()
             resp_bytes = mock_responses.pop(0)
             m.read.return_value = resp_bytes.getvalue()
             m.__enter__.return_value = m
             return m
 
-        creds = {"biznet_id": "000000123456", "username": "testuser", "password": "secretpassword"}
+        creds = {
+            "biznet_id": "000000123456",
+            "username": "testuser",
+            "password": "secretpassword",
+            "bearer_token": "test-custom-bearer"
+        }
 
         with patch("urllib.request.urlopen", side_effect=fake_urlopen):
             snap = provider.fetch_telemetry(creds)
@@ -114,6 +130,7 @@ class TestModularBandwidthSystem(unittest.TestCase):
             self.assertEqual(snap.quota_limit_bytes, int(1000.0 * (1024 ** 3)))
             self.assertEqual(snap.quota_remaining_bytes, int(500.0 * (1024 ** 3)))
             self.assertEqual(snap.last_downtime_reason, "Dying-gasp")
+            self.assertEqual(snap.last_downtime_sub, "Power loss detected by OLT")
             self.assertGreater(snap.reset_timestamp, 0)
             self.assertEqual(provider._cached_token, "test-jwt-token-xyz")
 
