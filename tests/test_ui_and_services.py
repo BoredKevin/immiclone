@@ -289,8 +289,8 @@ class TestLiveDashboardServer(unittest.TestCase):
             js_bytes = resp.read()
             self.assertIn(b"initEventDelegation", js_bytes)
 
-        # 3. ES Modules
-        modules = ["dom.js", "events.js", "duplication.js", "media.js", "mount.js", "storage.js", "modals.js", "sse.js", "updater.js"]
+        # 3. ES Modules & Import Integrity
+        modules = ["api.js", "dom.js", "events.js", "duplication.js", "formatters.js", "icons.js", "media.js", "mount.js", "storage.js", "modals.js", "sse.js", "updater.js"]
         for mod in modules:
             url_mod = f"http://127.0.0.1:{TEST_PORT}/static/js/modules/{mod}"
             with urllib.request.urlopen(url_mod, timeout=3) as resp:
@@ -298,6 +298,14 @@ class TestLiveDashboardServer(unittest.TestCase):
                 self.assertEqual(resp.headers.get("Content-Type"), "application/javascript; charset=utf-8")
                 mod_bytes = resp.read()
                 self.assertTrue(len(mod_bytes) > 50, f"Module {mod} empty or truncated")
+
+        # 4. Verify all relative module imports inside app.js resolve to reachable HTTP URLs
+        app_code = js_bytes.decode("utf-8")
+        import_paths = re.findall(r"from\s+['\"](\./[^'\"]+)['\"]", app_code)
+        for imp in import_paths:
+            resolved_url = f"http://127.0.0.1:{TEST_PORT}/static/js/" + imp.lstrip("./")
+            with urllib.request.urlopen(resolved_url, timeout=3) as resp:
+                self.assertEqual(resp.status, 200, f"Failed to resolve import '{imp}' in app.js (URL: {resolved_url})")
 
     def test_api_v1_version_and_updates(self):
         # 1. Canonical /api/v1/version

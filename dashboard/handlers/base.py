@@ -57,8 +57,12 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
         target_path = os.path.realpath(os.path.join(real_static, clean_rel))
 
         # Security: Prevent ../ escape from STATIC_DIR
-        if not target_path.startswith(real_static + os.sep) or not os.path.isfile(target_path):
+        if not target_path.startswith(real_static + os.sep):
             self.send_error_msg(403, "Forbidden")
+            return
+
+        if not os.path.isfile(target_path):
+            self.send_error_msg(404, "Not Found")
             return
 
         # Determine MIME type

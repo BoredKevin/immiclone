@@ -42,7 +42,7 @@ import {
   submitWorkerModal
 } from './modules/modals.js';
 import { openUpdatesModal, triggerUpdateCheckAction } from './modules/updater.js';
-import * as api from './api.js';
+import * as api from './modules/api.js';
 
 // ==========================================================================
 // Single-Screen Pipeline Stage Switching
