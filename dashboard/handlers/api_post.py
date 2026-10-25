@@ -191,11 +191,12 @@ class PostRoutesMixin:
         elif canonical_path == "/api/v1/worker/register":
             wid = req_data.get("worker_id", "")
             hostname = req_data.get("hostname", "unknown")
+            token = req_data.get("token", "")
             worker_version = req_data.get("version") or self.headers.get("X-Worker-Version", "unknown")
             client_ip = self.client_address[0] if getattr(self, "client_address", None) else "unknown"
             version_match = (worker_version == APP_VERSION)
             print(f"[+] Worker connected: {wid} ({hostname}, v{worker_version}, match={version_match}) from {client_ip}")
-            register_worker(wid, hostname, version=worker_version)
+            register_worker(wid, hostname, version=worker_version, token=token)
             self.send_json({
                 "status": "ok",
                 "message": "Registered",

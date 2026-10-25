@@ -225,6 +225,10 @@ class GetRoutesMixin:
                     return
                 except Exception as e:
                     print(f"[!] Error serving config: {e}")
+            else:
+                worker = get_worker(wid)
+                exp = worker.get("token") if worker else None
+                print(f"[!] Worker config rejected for '{wid}': token_valid={verify_worker_token(wid, token)} (expected='{exp}', got='{token}'), conf_exists={os.path.exists(conf_path)}")
 
             self.send_error_msg(403, "Forbidden")
             return

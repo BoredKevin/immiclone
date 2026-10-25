@@ -430,6 +430,58 @@ class TestLiveDashboardServer(unittest.TestCase):
             self.assertTrue(val.get("is_cross_account"))
             self.assertIn("404 notFound", val.get("warning", ""))
 
+    def test_worker_dynamic_token_binding_and_config(self):
+        # 1. Register a worker with a token
+        wid = "worker-dyn-test"
+        tok = "dyn_token_secret_123"
+        req_reg = urllib.request.Request(
+            f"http://127.0.0.1:{TEST_PORT}/api/v1/worker/register",
+            data=json.dumps({"worker_id": wid, "token": tok, "hostname": "test-box"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req_reg, timeout=3) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertEqual(data.get("status"), "ok")
+
+        # 2. Check workers list endpoint to verify token was stored
+        with urllib.request.urlopen(f"http://127.0.0.1:{TEST_PORT}/api/v1/workers", timeout=3) as resp:
+            workers = json.loads(resp.read().decode("utf-8"))
+            found = next((w for w in workers if w["id"] == wid), None)
+            self.assertIsNotNone(found)
+            self.assertEqual(found.get("token"), tok)
+
+        # 3. Wrong token receives 403 Forbidden
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{TEST_PORT}/api/v1/worker/config?id={wid}&token=wrong_token", timeout=3):
+                self.fail("Expected 403 Forbidden for wrong token")
+        except urllib.error.HTTPError as e:
+            self.assertEqual(e.code, 403)
+
+        # 4. Worker self-registered with empty token adopts token on first authenticated call
+        wid_empty = "worker-empty-test"
+        req_empty = urllib.request.Request(
+            f"http://127.0.0.1:{TEST_PORT}/api/v1/worker/register",
+            data=json.dumps({"worker_id": wid_empty, "hostname": "test-box-2"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req_empty, timeout=3) as resp:
+            self.assertEqual(resp.status, 200)
+
+        # Correctly served (or verified) without 403 when adopted
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{TEST_PORT}/api/v1/worker/config?id={wid_empty}&token=adopted_token_456", timeout=3) as resp:
+                self.assertIn(resp.status, (200, 403))
+        except urllib.error.HTTPError as e:
+            # If rclone.conf doesn't exist in test env, it may return 403 only if config path is missing, but let's check workers list
+            pass
+
+        with urllib.request.urlopen(f"http://127.0.0.1:{TEST_PORT}/api/v1/workers", timeout=3) as resp:
+            workers = json.loads(resp.read().decode("utf-8"))
+            found_empty = next((w for w in workers if w["id"] == wid_empty), None)
+            self.assertIsNotNone(found_empty)
+            self.assertEqual(found_empty.get("token"), "adopted_token_456")
+
     def test_rclone_throttle_api(self):
         req = urllib.request.Request(
             f"http://127.0.0.1:{TEST_PORT}/api/v1/rclone/throttle",

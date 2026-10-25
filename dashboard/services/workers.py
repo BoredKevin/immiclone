@@ -84,7 +84,17 @@ def verify_worker_token(wid, token):
     """Verifies that a worker token matches."""
     with STATE_LOCK:
         worker = _active_workers.get(wid)
-        return bool(worker and worker.get("token") == token)
+        if not worker:
+            return False
+        expected = worker.get("token", "")
+        # If no token was configured for this worker, adopt the runner's token or allow empty
+        if not expected:
+            if token:
+                worker["token"] = token
+                _worker_tokens[token] = wid
+                sync_workers_to_disk()
+            return True
+        return expected == token
 
 def create_worker_session(name=None, notes=None, include_tailscale=True, request_host=None, force_fresh=False):
     """Pre-provisions a worker session and generates the ready-to-use one-liner command."""
@@ -166,14 +176,14 @@ def create_custom_worker(name, notes=""):
         sync_workers_to_disk()
     return wid
 
-def register_worker(wid, hostname="unknown", version=None):
+def register_worker(wid, hostname="unknown", version=None, token=""):
     """Registers or updates a worker handshake on connection."""
     with STATE_LOCK:
         if wid not in _active_workers:
             _active_workers[wid] = {
                 "id": wid,
                 "name": f"Worker {wid}",
-                "token": "",
+                "token": token or "",
                 "hostname": hostname,
                 "version": version or APP_VERSION,
                 "status": "STANDBY",
@@ -183,10 +193,15 @@ def register_worker(wid, hostname="unknown", version=None):
                 "created_at": int(time.time()),
                 "pending_action": None
             }
+            if token:
+                _worker_tokens[token] = wid
         else:
             _active_workers[wid]["hostname"] = hostname
             if version:
                 _active_workers[wid]["version"] = version
+            if token and not _active_workers[wid].get("token"):
+                _active_workers[wid]["token"] = token
+                _worker_tokens[token] = wid
             _active_workers[wid]["status"] = "STANDBY"
             _active_workers[wid]["last_seen"] = time.time()
         sync_workers_to_disk()

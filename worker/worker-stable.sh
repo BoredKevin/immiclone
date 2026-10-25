@@ -174,7 +174,7 @@ echo " Endpoint  : ${ENDPOINT}"
 echo " Status    : Connecting to control server..."
 echo "============================================================"
 
-REG_RES="$(api_post "/api/v1/worker/register" "{\"worker_id\":\"${WORKER_ID}\",\"hostname\":\"${HOSTNAME_STR}\",\"version\":\"${WORKER_VERSION}\"}" 2>&1 || true)"
+REG_RES="$(api_post "/api/v1/worker/register" "{\"worker_id\":\"${WORKER_ID}\",\"token\":\"${TOKEN}\",\"hostname\":\"${HOSTNAME_STR}\",\"version\":\"${WORKER_VERSION}\"}" 2>&1 || true)"
 if [[ "$REG_RES" != *"\"status\":\"ok\""* && "$REG_RES" != *"\"status\": \"ok\""* ]]; then
   echo "[❌] Failed to connect to ${ENDPOINT}."
   echo "     Response from server: ${REG_RES}"
@@ -228,9 +228,9 @@ while true; do
         # Fetch fresh rclone.conf directly into /dev/shm
         api_get "/api/v1/worker/config?id=${WORKER_ID}&token=${TOKEN}" > "$RCLONE_CONF"
         if grep -q "Forbidden" "$RCLONE_CONF" 2>/dev/null; then
-          echo "[❌] Error fetching rclone configuration: Forbidden."
+          echo "[❌] Error fetching rclone configuration: Forbidden (Session token invalid or expired. Check token or launch a new session in dashboard)."
           rm -f "$RCLONE_CONF"
-          sleep 2
+          sleep 3
           continue
         fi
         chmod 600 "$RCLONE_CONF"
