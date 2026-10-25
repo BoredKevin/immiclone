@@ -5,7 +5,7 @@
       <span id="ts-badge" style="display:none;"></span>
       <span id="ts-status-desc" style="display:none;"></span>
 
-      <!-- 1. Sleek Terminal Command Bar -->
+      <!-- 1. Sleek Terminal Command Bar with 3 Runner Presets -->
       <div class="card terminal-card">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <div style="display:flex; align-items:center; gap:8px;">
@@ -13,8 +13,8 @@
               <polyline points="4 17 10 11 4 5"></polyline>
               <line x1="12" y1="19" x2="20" y2="19"></line>
             </svg>
-            <strong style="color:var(--heading); font-size:14px;">Launch Ephemeral Worker in Google Cloud Shell</strong>
-            <span style="font-size:12px; color:var(--text-muted);">(Gigabit cloud-to-cloud transfer runner)</span>
+            <strong style="color:var(--heading); font-size:14px;">Compute Worker Launcher</strong>
+            <span style="font-size:12px; color:var(--text-muted);">(Stateless cloud or host compute runners)</span>
           </div>
 
           <div class="btn-group">
@@ -29,14 +29,52 @@
               </svg>
               New Session
             </button>
+            <button class="btn btn-sm btn-accent" id="btn-open-cloud-shell" data-action="open-cloud-shell" title="Open Google Cloud Shell in a new tab">
+              <svg class="icon icon-sm" viewBox="0 0 24 24">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+              Open in Cloud Shell ↗
+            </button>
             <button class="btn btn-sm btn-primary" data-action="copy-worker-cmd" title="Copy one-liner command to clipboard">
               <svg class="icon icon-sm" viewBox="0 0 24 24">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
               </svg>
-              Copy Command
+              Copy Runner Command
             </button>
           </div>
+        </div>
+
+        <!-- 3 Runner Preset Tabs -->
+        <div class="runner-presets-bar">
+          <div class="runner-preset-tabs">
+            <button type="button" class="runner-preset-btn active" data-action="select-runner-preset" data-preset="cloud-shell">
+              <svg class="icon icon-sm" viewBox="0 0 24 24">
+                <polyline points="4 17 10 11 4 5"></polyline>
+                <line x1="12" y1="19" x2="20" y2="19"></line>
+              </svg>
+              Google Cloud Shell
+            </button>
+            <button type="button" class="runner-preset-btn" data-action="select-runner-preset" data-preset="docker">
+              <svg class="icon icon-sm" viewBox="0 0 24 24">
+                <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                <line x1="6" y1="18" x2="6.01" y2="18"></line>
+              </svg>
+              VPS / Docker
+            </button>
+            <button type="button" class="runner-preset-btn" data-action="select-runner-preset" data-preset="curl">
+              <svg class="icon icon-sm" viewBox="0 0 24 24">
+                <polyline points="16 18 22 12 16 6"></polyline>
+                <polyline points="8 6 2 12 8 18"></polyline>
+              </svg>
+              Raw cURL
+            </button>
+          </div>
+          <span class="runner-preset-desc" id="runner-preset-desc">Recommended for free gigabit cloud-to-cloud transfers via browser terminal</span>
         </div>
 
         <div class="terminal-bar">
@@ -81,7 +119,24 @@
       </div>
 
       <div id="transactions-container">
-        <div class="empty-state" id="tx-empty-state">No transactions created yet. Click "+ New Transaction" to create one.</div>
+        <div class="empty-state card" id="tx-empty-state">
+          <div style="font-size:14px; font-weight:600; color:var(--heading); margin-bottom:6px;">No duplication transactions configured</div>
+          <div style="color:var(--text-muted); font-size:12px; margin-bottom:14px;">Create a replication transaction to start copying or syncing files between remotes.</div>
+          <div class="btn-group" style="justify-content:center;">
+            <button class="btn btn-sm btn-accent" data-action="guided-create-tx" data-preset="gdrive-mirror">
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path><polyline points="16 16 12 12 8 16"></polyline></svg>
+              Preset: Google Drive Cloud Mirror
+            </button>
+            <button class="btn btn-sm" data-action="guided-create-tx" data-preset="local-ssd-backup">
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect></svg>
+              Preset: Local SSD Backup
+            </button>
+            <button class="btn btn-sm btn-primary" data-action="open-modal" data-target="new-tx">
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              + Custom Transaction
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- 3. Connected Workers Pool -->
@@ -101,7 +156,7 @@
           </div>
         </div>
         <div class="btn-group">
-          <button class="btn btn-sm btn-danger" data-action="prune-offline-workers">
+          <button class="btn btn-sm btn-danger" data-action="prune-offline-workers" title="Remove all offline workers from registry">
             <svg class="icon icon-sm" viewBox="0 0 24 24">
               <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="8.5" cy="7" r="4"></circle>
@@ -122,22 +177,9 @@
         </div>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Status</th>
-            <th>Worker ID & Name</th>
-            <th>Hostname / Host</th>
-            <th>Assigned Transaction</th>
-            <th>Last Ping</th>
-            <th>Notes</th>
-            <th style="text-align:right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="workers-table-body">
-          <tr id="workers-empty-row"><td colspan="7" class="empty-state">No workers registered. Launch a worker via the one-liner above.</td></tr>
-        </tbody>
-      </table>
+      <div class="workers-grid" id="workers-container">
+        <div class="empty-state" id="workers-empty-row">No compute workers registered. Launch a worker via the runner presets above.</div>
+      </div>
     </div>
 
     <!-- DECLARATIVE HTML5 TEMPLATES FOR TAB 1 -->
@@ -160,8 +202,9 @@
               <span data-bind="notes-wrap"></span>
             </div>
           </div>
-          <div style="font-size:12px; color:var(--text-muted); text-align:right;">
-            Assigned Worker: <strong class="mono" style="color:var(--heading); font-size:13px;" data-bind="worker-name">None</strong>
+          <div class="tx-assigned-worker">
+            <span class="tx-assigned-label">Assigned Worker</span>
+            <strong class="mono tx-assigned-name" data-bind="worker-name">None</strong>
           </div>
         </div>
 
@@ -175,7 +218,7 @@
             <span class="tx-detail-val tabular-nums" data-bind="speed">0 B/s</span>
           </div>
           <div class="tx-detail-item">
-            <span class="tx-detail-label">Files</span>
+            <span class="tx-detail-label">Files Copied</span>
             <span class="tx-detail-val tabular-nums" data-bind="files">0 copied (0 checked)</span>
           </div>
           <div class="tx-detail-item">
@@ -187,8 +230,8 @@
         <div class="progress-bar">
           <div class="progress-fill" data-bind="progress-fill" style="width: 0%"></div>
         </div>
-        <div class="mono" style="font-size:11px; color:var(--text-muted); margin-top:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-          Current: <span data-bind="current-file">Idle</span>
+        <div class="mono tx-current-file">
+          <span class="tx-current-label">Current:</span> <span data-bind="current-file">Idle</span>
         </div>
 
         <!-- Declarative Action Buttons (Toggled via .hidden to preserve focus & state) -->
@@ -196,11 +239,11 @@
           <!-- Running State Actions -->
           <div class="btn-group hidden" data-bind="actions-running">
             <button class="btn btn-sm" data-action="pause-tx">
-              <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
               Pause
             </button>
             <button class="btn btn-sm btn-danger" data-action="cancel-tx">
-              <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
               Cancel
             </button>
           </div>
@@ -210,7 +253,7 @@
             <div data-bind="assign-group" style="display:inline-flex; align-items:center; gap:6px;">
               <select class="form-select" data-bind="assign-select" style="width:auto; max-width:240px; padding:5px 9px; font-size:12px;"></select>
               <button class="btn btn-sm btn-accent" data-action="assign-tx">
-                <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 <span data-bind="assign-btn-label">Start on Worker</span>
               </button>
             </div>
@@ -218,31 +261,31 @@
               Connect a worker via one-liner above to start.
             </span>
             <button class="btn btn-sm" data-action="edit-tx">
-              <svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
               Edit
             </button>
             <button class="btn btn-sm" data-action="reset-tx">
-              <svg class="icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
               Reset Progress
             </button>
             <button class="btn btn-sm btn-danger" data-action="delete-tx">
-              <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
               Delete
             </button>
           </div>
 
           <!-- Completed State Actions -->
           <div class="btn-group hidden" data-bind="actions-completed">
-            <button class="btn btn-sm" data-action="requeue-tx">
-              <svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            <button class="btn btn-sm btn-accent" data-action="requeue-tx">
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
               Re-Queue
             </button>
             <button class="btn btn-sm" data-action="edit-tx">
-              <svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
               Edit
             </button>
             <button class="btn btn-sm btn-danger" data-action="delete-tx">
-              <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
               Delete
             </button>
           </div>
@@ -250,38 +293,80 @@
       </div>
     </template>
 
-    <!-- Template: Worker Row (Persistent Row + Action Toggles) -->
+    <!-- Template: Worker Card (Interactive Runner Card) -->
     <template id="tpl-worker-row">
-      <tr data-key="">
-        <td>
-          <span class="status-cell" data-bind="status-cell">
-            <span class="status-dot dot-amber" data-bind="status-dot"></span>
-            <span data-bind="status-text">Standby</span>
-          </span>
-        </td>
-        <td>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <strong style="color:var(--heading); font-size:13px;" data-bind="name">Worker</strong>
-            <span class="badge" data-bind="version-badge" style="font-size:10px; padding:1px 5px; border-radius:4px;">v1.0.1</span>
+      <div class="card worker-card" data-key="">
+        <div class="worker-card-header">
+          <div class="worker-info-group">
+            <div class="worker-title-row">
+              <strong class="worker-name" data-bind="name">Worker</strong>
+              <span class="badge" data-bind="version-badge">v1.0.1</span>
+              <span class="badge" data-bind="status-badge">STANDBY</span>
+            </div>
+            <div class="worker-meta-row">
+              <span class="mono worker-id" data-bind="id"></span>
+              <span class="worker-meta-sep">•</span>
+              <span class="mono worker-host" data-bind="hostname">-</span>
+            </div>
           </div>
-          <div class="mono" style="font-size:11px; color:var(--text-muted);" data-bind="id"></div>
-        </td>
-        <td class="mono" style="font-size:12px;" data-bind="hostname">-</td>
-        <td><code class="mono" style="color:var(--accent); font-size:12px;" data-bind="current-tx">-</code></td>
-        <td class="tabular-nums" data-bind="last-seen">-</td>
-        <td style="color:var(--text-muted); font-size:12px;" data-bind="notes">-</td>
-        <td style="text-align:right;">
-          <button class="btn btn-sm" data-action="edit-worker">
-            <svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          <div class="worker-heartbeat-wrap">
+            <span class="worker-heartbeat" data-bind="heartbeat-badge">
+              <span class="status-dot dot-green dot-pulse" data-bind="heartbeat-dot"></span>
+              <span data-bind="heartbeat-text">Ping just now</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="worker-body">
+          <div class="worker-route-section">
+            <div class="worker-section-label">Assigned Route</div>
+            <div class="worker-route-display">
+              <span class="worker-route-pill mono" data-bind="tx-route">No active transaction (Standby)</span>
+              <span class="worker-tx-id mono" data-bind="tx-id">-</span>
+            </div>
+          </div>
+
+          <div class="worker-progress-wrap hidden" data-bind="tx-progress-wrap">
+            <div class="progress-bar progress-bar-mini">
+              <div class="progress-fill running shimmer" data-bind="tx-progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="worker-progress-meta">
+              <span data-bind="tx-pct" class="tabular-nums">0%</span>
+              <span class="worker-meta-sep">•</span>
+              <span data-bind="tx-speed" class="tabular-nums">0 B/s</span>
+              <span class="worker-meta-sep">•</span>
+              <span>ETA: <strong data-bind="tx-eta" class="tabular-nums">-</strong></span>
+            </div>
+          </div>
+
+          <div class="worker-details-grid">
+            <div class="worker-detail-item">
+              <span class="worker-detail-label">Auth Token</span>
+              <span class="sensitive-blur mono worker-token-preview" data-bind="token-display" title="Hover to reveal token">••••••••••••••••</span>
+            </div>
+            <div class="worker-detail-item">
+              <span class="worker-detail-label">Notes</span>
+              <span class="worker-notes-text" data-bind="notes">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="worker-actions">
+          <button class="btn btn-sm btn-danger hidden" data-bind="btn-stop-worker" data-action="stop-worker" title="Disconnect and stop this worker runner">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+            Stop Worker
+          </button>
+          <button class="btn btn-sm" data-action="refresh-worker-token" title="Rotate and refresh authentication token">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            Refresh Token
+          </button>
+          <button class="btn btn-sm" data-action="edit-worker" title="Edit worker details">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
             Edit
           </button>
-          <button class="btn btn-sm btn-danger hidden" data-bind="btn-stop-worker" data-action="stop-worker">
-            <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
-            Stop
+          <button class="btn btn-sm btn-danger" data-action="delete-worker" title="Remove worker from registry">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
           </button>
-          <button class="btn btn-sm btn-danger" data-bind="btn-delete-worker" data-action="delete-worker" title="Remove worker">
-            <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-          </button>
-        </td>
-      </tr>
+        </div>
+      </div>
     </template>

@@ -9,12 +9,13 @@ import * as api from './api.js';
 
 let currentTxFilter = 'all';
 let currentWorkerFilter = 'all';
+let activeRunnerPreset = 'cloud-shell';
 let latestTransactions = [];
 let latestWorkers = [];
 let fullWorkerCommand = '';
 
 export function getFullWorkerCommand() {
-  return fullWorkerCommand;
+  return generatePresetCommand(activeRunnerPreset, fullWorkerCommand);
 }
 
 export function setTxFilter(filter) {
@@ -31,6 +32,70 @@ export function setWorkerFilter(filter) {
     el.classList.toggle('active', el.dataset.filter === filter);
   });
   renderWorkers(latestWorkers);
+}
+
+export function setRunnerPreset(preset) {
+  activeRunnerPreset = preset;
+  document.querySelectorAll('[data-action="select-runner-preset"]').forEach(el => {
+    el.classList.toggle('active', el.dataset.preset === preset);
+  });
+
+  const descEl = document.getElementById('runner-preset-desc');
+  if (descEl) {
+    if (preset === 'cloud-shell') {
+      descEl.textContent = 'Recommended for free gigabit cloud-to-cloud transfers via browser terminal';
+    } else if (preset === 'docker') {
+      descEl.textContent = 'Persistent detached container runner for Linux VPS or Docker host';
+    } else if (preset === 'curl') {
+      descEl.textContent = 'Minimal direct cURL script runner for raw bash environments';
+    }
+  }
+
+  const openCsBtn = document.getElementById('btn-open-cloud-shell');
+  if (openCsBtn) {
+    openCsBtn.classList.toggle('hidden', preset !== 'cloud-shell');
+  }
+
+  updateCmdDisplay();
+}
+
+export const selectRunnerPreset = setRunnerPreset;
+
+function generatePresetCommand(preset, rawCmd) {
+  if (!rawCmd) return '';
+  if (preset === 'cloud-shell' || preset === 'curl') {
+    return rawCmd;
+  }
+  if (preset === 'docker') {
+    const idMatch = rawCmd.match(/--id\s+([^\s|&]+)/);
+    const epMatch = rawCmd.match(/--endpoint\s+([^\s|&]+)/);
+    const tokMatch = rawCmd.match(/--token\s+([^\s|&]+)/);
+    const tsMatch = rawCmd.match(/--tailscale-key\s+([^\s|&]+)/);
+
+    const wid = idMatch ? idMatch[1] : 'worker-runner';
+    const ep = epMatch ? epMatch[1] : 'http://localhost:8080';
+    const tok = tokMatch ? tokMatch[1] : '';
+    const ts = tsMatch ? tsMatch[1] : '';
+
+    let cmd = `docker run -d --name ${wid} --restart=unless-stopped --network=host -v /dev/shm:/dev/shm ghcr.io/boredkevin/immiclone-worker:latest --id ${wid} --endpoint ${ep}`;
+    if (tok) cmd += ` --token ${tok}`;
+    if (ts) cmd += ` --tailscale-key ${ts}`;
+    return cmd;
+  }
+  return rawCmd;
+}
+
+function updateCmdDisplay() {
+  const displayEl = document.getElementById('worker-cmd-display');
+  if (!displayEl) return;
+  const cmd = generatePresetCommand(activeRunnerPreset, fullWorkerCommand);
+  if (cmd) {
+    displayEl.innerHTML = formatCommandHtml(cmd);
+    displayEl.title = 'Hover over blurred keys to reveal. Click Copy Runner Command to copy to clipboard.';
+  } else {
+    displayEl.innerHTML = '<span style="color:var(--text-muted);">curl -sSL https://raw.githubusercontent.com/BoredKevin/immiclone/refs/heads/main/worker/worker-stable.sh | bash <em>(Click &ldquo;Copy Runner Command&rdquo; or &ldquo;New Session&rdquo; to launch)</em></span>';
+    displayEl.title = 'Click Copy Runner Command or New Session to generate a runner session';
+  }
 }
 
 export function updateDuplicationData(transactions, workers) {
@@ -74,9 +139,6 @@ export function renderTransactions(txList, workers) {
   const emptyState = document.getElementById('tx-empty-state');
   if (emptyState) {
     emptyState.classList.toggle('hidden', filtered.length > 0);
-    if (filtered.length === 0) {
-      emptyState.textContent = `No duplication transactions matching filter '${currentTxFilter}'.`;
-    }
   }
 
   const standbyWorkers = workers.filter(w => w.status === 'STANDBY');
@@ -154,7 +216,7 @@ export function renderTransactions(txList, workers) {
     if (isQueued || isPaused) fillClass = 'amber';
     else if (isInterrupted || isCancelled) fillClass = 'red';
     else if (isCompleted) fillClass = 'purple';
-    if (isRunning) fillClass += ' running';
+    if (isRunning) fillClass += ' running shimmer';
     const fillEl = getBoundElement(el, 'progress-fill');
     if (fillEl) fillEl.className = `progress-fill ${fillClass}`;
 
@@ -205,8 +267,8 @@ export function renderTransactions(txList, workers) {
 }
 
 export function renderWorkers(workers) {
-  const tbody = document.getElementById('workers-table-body');
-  if (!tbody) return;
+  const container = document.getElementById('workers-container') || document.getElementById('workers-table-body');
+  if (!container) return;
 
   const activeCount = workers.filter(w => w.status !== 'OFFLINE').length;
   const offlineCount = workers.filter(w => w.status === 'OFFLINE').length;
@@ -228,24 +290,32 @@ export function renderWorkers(workers) {
     emptyRow.classList.toggle('hidden', filtered.length > 0);
   }
 
-  // Reconcile worker rows in-place using declarative <template id="tpl-worker-row">
-  reconcileList(tbody, filtered, 'tpl-worker-row', w => w.id, (el, w, isNew) => {
+  // Reconcile worker cards in-place using declarative <template id="tpl-worker-row">
+  reconcileList(container, filtered, 'tpl-worker-row', w => w.id, (el, w, isNew) => {
     const isRunning = w.status === 'RUNNING';
     const isOffline = w.status === 'OFFLINE';
 
-    // Status dot & text
-    const dot = getBoundElement(el, 'status-dot');
-    if (dot) {
-      if (isRunning) dot.className = 'status-dot dot-green dot-pulse';
-      else if (isOffline) dot.className = 'status-dot dot-red';
-      else dot.className = 'status-dot dot-amber';
+    // Status badge & dot
+    const statusBadge = getBoundElement(el, 'status-badge');
+    if (statusBadge) {
+      if (isRunning) {
+        statusBadge.className = 'badge badge-running';
+        statusBadge.innerHTML = '<span class="status-dot dot-green dot-pulse"></span> RUNNING';
+      } else if (isOffline) {
+        statusBadge.className = 'badge badge-offline';
+        statusBadge.innerHTML = '<span class="status-dot dot-red"></span> OFFLINE';
+      } else {
+        statusBadge.className = 'badge badge-standby';
+        statusBadge.innerHTML = '<span class="status-dot dot-amber"></span> STANDBY';
+      }
     }
-    bindText(el, 'status-text', isRunning ? 'Running' : (isOffline ? 'Offline' : 'Standby'));
 
     bindText(el, 'name', w.name || w.id);
     bindText(el, 'id', w.id);
+    bindText(el, 'hostname', w.hostname || '-');
+    bindText(el, 'notes', w.notes || 'None');
 
-    // Semver badge & matching indicator
+    // Semver badge
     const wVer = w.version || '1.0.1';
     const verBadge = el.querySelector('[data-bind="version-badge"]');
     if (verBadge) {
@@ -261,17 +331,67 @@ export function renderWorkers(workers) {
       }
     }
 
-    bindText(el, 'hostname', w.hostname || '-');
-    bindText(el, 'current-tx', w.current_tx || '-');
-
+    // Live Heartbeat Indicator (seconds since ping + pulsing dot)
+    const hbDot = getBoundElement(el, 'heartbeat-dot');
+    const hbText = getBoundElement(el, 'heartbeat-text');
+    const hbBadge = getBoundElement(el, 'heartbeat-badge');
     const relTime = formatRelativeTime(w.last_seen_sec);
-    bindText(el, 'last-seen', isOffline ? `Offline (${relTime})` : `Active (${relTime})`);
-    bindStyle(el, 'last-seen', 'color', isOffline ? 'var(--text-muted)' : 'var(--green-light)');
-    bindText(el, 'notes', w.notes || '-');
 
-    // Rule 1: Action button toggles directly inside <template>
+    if (hbDot) {
+      if (isOffline) {
+        hbDot.className = 'status-dot dot-red';
+      } else if (isRunning) {
+        hbDot.className = 'status-dot dot-green dot-pulse';
+      } else {
+        hbDot.className = 'status-dot dot-green dot-pulse';
+      }
+    }
+
+    if (hbText) {
+      if (isOffline) {
+        hbText.textContent = `Offline (${relTime})`;
+      } else if (w.last_seen_sec < 4) {
+        hbText.textContent = 'Live ping (just now)';
+      } else {
+        hbText.textContent = `Heartbeat (${w.last_seen_sec}s ago)`;
+      }
+    }
+
+    if (hbBadge) {
+      hbBadge.className = isOffline ? 'worker-heartbeat worker-heartbeat-offline' : 'worker-heartbeat worker-heartbeat-active';
+    }
+
+    // Assigned transaction route & mini progress bar
+    const tx = latestTransactions.find(t => t.tx_id === w.current_tx);
+    if (w.current_tx && tx) {
+      bindText(el, 'tx-route', `${tx.source} → ${tx.dest}`);
+      bindText(el, 'tx-id', tx.tx_id);
+      bindHidden(el, 'tx-progress-wrap', false);
+
+      const txPct = tx.percentage || 0;
+      const progressFill = getBoundElement(el, 'tx-progress-fill');
+      if (progressFill) {
+        progressFill.style.width = `${txPct}%`;
+      }
+      bindText(el, 'tx-pct', `${txPct}%`);
+      bindText(el, 'tx-speed', tx.speed_human || '0 B/s');
+      bindText(el, 'tx-eta', tx.eta_sec ? `${tx.eta_sec}s` : '-');
+    } else {
+      bindText(el, 'tx-route', isOffline ? 'Disconnected' : 'No active transaction (Standby)');
+      bindText(el, 'tx-id', w.current_tx || '-');
+      bindHidden(el, 'tx-progress-wrap', true);
+    }
+
+    // Token display with sensitive blur
+    const tokDisplay = getBoundElement(el, 'token-display');
+    if (tokDisplay) {
+      const tokVal = w.token || '••••••••••••••••';
+      tokDisplay.textContent = tokVal;
+      tokDisplay.title = 'Hover to reveal token';
+    }
+
+    // Quick action button toggles
     bindHidden(el, 'btn-stop-worker', !isRunning);
-    bindHidden(el, 'btn-delete-worker', false);
   });
 }
 
@@ -279,20 +399,10 @@ const STORAGE_KEY = 'immiclone_worker_cmd';
 
 export function initWorkerCmdBar() {
   const saved = sessionStorage.getItem(STORAGE_KEY);
-  const displayEl = document.getElementById('worker-cmd-display');
   if (saved) {
     fullWorkerCommand = saved;
-    if (displayEl) {
-      displayEl.innerHTML = formatCommandHtml(saved);
-      displayEl.title = 'Hover over blurred keys to reveal. Click Copy Command to copy the full command.';
-    }
-  } else {
-    // Show standby placeholder without generating a new session or minting an auth key
-    if (displayEl) {
-      displayEl.innerHTML = '<span style="color:var(--text-muted);">curl -sSL https://raw.githubusercontent.com/BoredKevin/immiclone/refs/heads/main/worker/worker-stable.sh | bash <em>(Click &ldquo;Copy Command&rdquo; or &ldquo;New Session&rdquo; to launch)</em></span>';
-      displayEl.title = 'Click Copy Command or New Session to generate a runner session';
-    }
   }
+  updateCmdDisplay();
 }
 
 export async function regenerateWorkerCmd(forceFresh = false) {
@@ -308,14 +418,11 @@ export async function regenerateWorkerCmd(forceFresh = false) {
     if (fullWorkerCommand) {
       sessionStorage.setItem(STORAGE_KEY, fullWorkerCommand);
     }
-    if (displayEl) {
-      displayEl.innerHTML = formatCommandHtml(fullWorkerCommand);
-      displayEl.title = 'Hover over blurred keys to reveal. Click Copy Command to copy the full command.';
-    }
+    updateCmdDisplay();
     return fullWorkerCommand;
   } catch (e) {
     fullWorkerCommand = 'curl -sSL https://raw.githubusercontent.com/BoredKevin/immiclone/refs/heads/main/worker/worker-stable.sh | bash';
-    if (displayEl) displayEl.innerHTML = formatCommandHtml(fullWorkerCommand);
+    updateCmdDisplay();
     return fullWorkerCommand;
   }
 }
@@ -358,14 +465,11 @@ export async function copyToClipboard(text) {
 }
 
 export async function copyWorkerCmd(targetBtn) {
-  let cmd = fullWorkerCommand;
-  if (!cmd) {
+  if (!fullWorkerCommand) {
     // Generate session on-demand if user copies before generating
-    cmd = await regenerateWorkerCmd(false);
+    await regenerateWorkerCmd(false);
   }
-  if (!cmd) {
-    cmd = document.getElementById('worker-cmd-display')?.innerText || '';
-  }
+  const cmd = generatePresetCommand(activeRunnerPreset, fullWorkerCommand) || document.getElementById('worker-cmd-display')?.innerText || '';
   if (!cmd) return;
 
   const ok = await copyToClipboard(cmd);

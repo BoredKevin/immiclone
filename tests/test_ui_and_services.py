@@ -110,13 +110,23 @@ class TestImmicloneDesignSystemAndUI(unittest.TestCase):
         self.assertIn("tx-filter-queued", rendered, "Queued transaction filter pill missing")
         self.assertIn("count-tx-queued", rendered, "Queued count badge missing")
 
-        # 7. Single-line Terminal Bar
+        # 7. Single-line Terminal Bar & 3 Runner Presets
         self.assertIn("terminal-bar", rendered, "Sleek terminal command bar missing")
         self.assertIn("worker-cmd-display", rendered, "Worker command display missing")
+        self.assertIn('data-preset="cloud-shell"', rendered, "Google Cloud Shell runner preset missing")
+        self.assertIn('data-preset="docker"', rendered, "VPS / Docker runner preset missing")
+        self.assertIn('data-preset="curl"', rendered, "cURL runner preset missing")
+        self.assertIn('data-action="open-cloud-shell"', rendered, "Open in Cloud Shell button missing")
+        self.assertIn("btn-open-cloud-shell", rendered, "Open in Cloud Shell button ID missing")
 
-        # 8. Multi-Cloud & Host Storage Matrix
+        # 8. Multi-Cloud & Host Storage Matrix (Authoritative Cloud)
         self.assertIn("cloud-remotes-grid", rendered, "Dynamic cloud remotes grid container missing")
         self.assertIn("Local Host Storage Matrix", rendered, "Host storage matrix missing")
+        self.assertIn("card-primary-cloud", rendered, "Authoritative primary cloud card missing")
+        self.assertIn("cloud-used", rendered, "cloud-used element missing")
+        self.assertIn("cloud-total", rendered, "cloud-total element missing")
+        self.assertIn("cloud-pct", rendered, "cloud-pct element missing")
+        self.assertIn("cloud-bar", rendered, "cloud-bar element missing")
 
         # 9. Modals (including updates modal)
         self.assertIn("modal-tailscale", rendered, "Tailscale modal missing")
@@ -138,6 +148,13 @@ class TestImmicloneDesignSystemAndUI(unittest.TestCase):
         self.assertIn('data-bind="actions-pending"', rendered, "actions-pending group missing in #tpl-tx-card")
         self.assertIn('data-bind="actions-completed"', rendered, "actions-completed group missing in #tpl-tx-card")
         self.assertIn('data-bind="assign-select"', rendered, "assign-select missing in #tpl-tx-card")
+
+        # Runner card verification: Live heartbeat & token refresh controls directly inside #tpl-worker-row
+        self.assertIn('data-bind="heartbeat-badge"', rendered, "heartbeat-badge missing in #tpl-worker-row")
+        self.assertIn('data-bind="heartbeat-dot"', rendered, "heartbeat-dot missing in #tpl-worker-row")
+        self.assertIn('data-bind="token-display"', rendered, "token-display missing in #tpl-worker-row")
+        self.assertIn('data-action="refresh-worker-token"', rendered, "refresh-worker-token action missing in #tpl-worker-row")
+        self.assertIn('data-action="prune-offline-workers"', rendered, "prune-offline-workers action missing in tab_duplication")
 
     def test_renderer_mtime_caching(self):
         # Initial render populates cache
@@ -365,6 +382,39 @@ class TestLiveDashboardServer(unittest.TestCase):
             self.assertIn("one_liner", data)
             self.assertIn("worker-stable.sh", data["one_liner"])
             self.assertIn("https://raw.githubusercontent.com/BoredKevin/immiclone", data["one_liner"])
+            self.assertIn("worker_id", data)
+            wid = data["worker_id"]
+
+        # Test token refresh on the created session worker
+        req_refresh = urllib.request.Request(
+            f"http://127.0.0.1:{TEST_PORT}/api/v1/worker/refresh-token",
+            data=json.dumps({"worker_id": wid}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req_refresh, timeout=3) as resp_ref:
+            self.assertEqual(resp_ref.status, 200)
+            ref_data = json.loads(resp_ref.read().decode("utf-8"))
+            self.assertEqual(ref_data.get("status"), "ok")
+            self.assertEqual(ref_data.get("worker_id"), wid)
+            self.assertIn("token", ref_data)
+            self.assertTrue(len(ref_data["token"]) >= 16)
+
+    def test_check_sharing_api(self):
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{TEST_PORT}/api/v1/rclone/check-sharing",
+            data=json.dumps({
+                "source": "bkc:library",
+                "dest": "1qc:backup",
+                "rclone_flags": ["--drive-server-side-across-configs"]
+            }).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            self.assertEqual(resp.status, 200)
+            val = json.loads(resp.read().decode("utf-8"))
+            self.assertEqual(val.get("status"), "warning")
+            self.assertTrue(val.get("is_cross_account"))
+            self.assertIn("404 notFound", val.get("warning", ""))
 
     def test_rclone_throttle_api(self):
         req = urllib.request.Request(

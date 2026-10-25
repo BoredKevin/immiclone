@@ -64,6 +64,7 @@ export const createWorker = (payload) => apiPost(`${API_PREFIX}/worker/create`, 
 export const updateWorker = (payload) => apiPost(`${API_PREFIX}/worker/update`, payload);
 export const disconnectWorker = (wid) => apiPost(`${API_PREFIX}/worker/disconnect`, { worker_id: wid });
 export const deleteWorker = (wid) => apiPost(`${API_PREFIX}/worker/delete`, { worker_id: wid });
+export const refreshWorkerToken = (wid) => apiPost(`${API_PREFIX}/worker/refresh-token`, { worker_id: wid });
 export const pruneOfflineWorkers = () => apiPost(`${API_PREFIX}/worker/prune-offline`);
 
 // Media

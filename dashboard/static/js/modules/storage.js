@@ -119,7 +119,14 @@ function renderRemotesGrid(storage) {
       if (cloudTotal) cloudTotal.textContent = primary.total || '0 GB';
       if (cloudFree) cloudFree.textContent = primary.free || '0 GB';
       if (cloudPct) cloudPct.textContent = (primary.percent_used || 0) + '%';
-      if (cloudBar) cloudBar.style.width = Math.min(100, primary.percent_used || 0) + '%';
+      if (cloudBar) {
+        const pct = primary.percent_used || 0;
+        let barClass = 'purple';
+        if (pct >= 90) barClass = 'red';
+        else if (pct >= 75) barClass = 'amber';
+        cloudBar.className = `progress-fill ${barClass}`;
+        cloudBar.style.width = Math.min(100, pct) + '%';
+      }
       if (cloudTrash) cloudTrash.textContent = primary.trashed || '0 GB';
     }
   }

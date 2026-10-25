@@ -113,7 +113,21 @@ APP_CONFIG_PATH = os.environ.get("APP_CONFIG_PATH", os.path.join(DATA_DIR, "app_
 # Storage Mounts & Caching Paths (environment fallbacks)
 MOUNT_BASE = os.environ.get("MOUNT_BASE", "/mnt/immiclone")
 CACHE_BASE = os.environ.get("CACHE_BASE", "/var/cache/immiclone/vfs")
-RCLONE_CONF_PATH = os.environ.get("RCLONE_CONF_PATH", os.path.expanduser("~/.config/rclone/rclone.conf"))
+def _default_rclone_conf_path():
+    if os.environ.get("RCLONE_CONF_PATH"):
+        return os.environ.get("RCLONE_CONF_PATH")
+    linux_default = os.path.expanduser("~/.config/rclone/rclone.conf")
+    if os.path.exists(linux_default):
+        return linux_default
+    if os.name == "nt":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            win_default = os.path.join(appdata, "rclone", "rclone.conf")
+            if os.path.exists(win_default):
+                return win_default
+    return linux_default
+
+RCLONE_CONF_PATH = _default_rclone_conf_path()
 RCLONE_RC_URL = os.environ.get("RCLONE_RC_URL", "http://localhost:5572")
 
 # Split Domain Locks
@@ -222,6 +236,19 @@ def save_app_config(new_config):
 def get_primary_remote():
     cfg = get_app_config()
     rem = cfg.get("storage", {}).get("primary_remote", "").strip()
+    if not rem:
+        rem = os.environ.get("PRIMARY_REMOTE", "").strip()
+    if not rem:
+        # Check if bkc exists in rclone.conf as authoritative default
+        conf = get_rclone_conf_path()
+        if os.path.exists(conf):
+            try:
+                with open(conf, "r", encoding="utf-8") as f:
+                    content = f.read()
+                if "[bkc]" in content:
+                    rem = "bkc:"
+            except Exception:
+                pass
     if rem and not rem.endswith(":"):
         rem += ":"
     return rem
@@ -247,7 +274,13 @@ def get_rclone_rc_url():
 
 def get_rclone_conf_path():
     cfg = get_app_config()
-    return cfg.get("storage", {}).get("rclone_conf_path", RCLONE_CONF_PATH)
+    configured = cfg.get("storage", {}).get("rclone_conf_path", RCLONE_CONF_PATH)
+    if os.path.exists(configured):
+        return configured
+    fallback = _default_rclone_conf_path()
+    if os.path.exists(fallback):
+        return fallback
+    return configured
 
 def get_server_external_url():
     cfg = get_app_config()

@@ -853,6 +853,63 @@ header {
 }
 
 /* ==========================================================================
+   Runner Presets Bar (Google Cloud Shell / VPS Docker / Raw cURL)
+   ========================================================================== */
+
+.runner-presets-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+
+.runner-preset-tabs {
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.runner-preset-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.runner-preset-btn:hover {
+  color: var(--heading);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.runner-preset-btn.active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.runner-preset-desc {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* ==========================================================================
    Section Headers & Filter Chips
    ========================================================================== */
 
@@ -936,9 +993,12 @@ header {
 }
 
 .badge-running, .badge-green {
-  background: rgba(16, 185, 129, 0.12);
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.12), rgba(52, 211, 153, 0.22), rgba(16, 185, 129, 0.12));
+  background-size: 200% 100%;
+  animation: pulse-bar 2.5s ease infinite;
   color: var(--green-light);
-  border-color: rgba(16, 185, 129, 0.3);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
 }
 
 .badge-standby, .badge-queued {
@@ -948,9 +1008,9 @@ header {
 }
 
 .badge-interrupted, .badge-offline, .badge-red {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--red-light);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(244, 63, 94, 0.14);
+  color: #fb7185;
+  border-color: rgba(244, 63, 94, 0.32);
 }
 
 .badge-paused {
@@ -960,9 +1020,9 @@ header {
 }
 
 .badge-completed {
-  background: rgba(168, 85, 247, 0.12);
+  background: rgba(168, 85, 247, 0.14);
   color: #c084fc;
-  border-color: rgba(168, 85, 247, 0.3);
+  border-color: rgba(168, 85, 247, 0.32);
 }
 
 /* ==========================================================================
@@ -1043,6 +1103,287 @@ header {
   flex-wrap: wrap;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 12px;
+}
+
+.tx-assigned-worker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.tx-assigned-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+.tx-assigned-name {
+  font-size: 13px;
+  color: var(--heading);
+}
+
+.tx-current-file {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-current-label {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Worker Cards Grid & Interactive Runner Cards
+   ========================================================================== */
+
+.workers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.worker-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 20px;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.worker-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 28px -4px rgba(0, 0, 0, 0.55);
+}
+
+.worker-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.worker-info-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.worker-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.worker-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.worker-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.worker-meta-sep {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.worker-heartbeat-wrap {
+  flex-shrink: 0;
+}
+
+.worker-heartbeat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.worker-heartbeat-active {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.worker-heartbeat-offline {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--border);
+}
+
+.worker-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex: 1;
+}
+
+.worker-route-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.worker-section-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.worker-route-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.worker-route-pill {
+  font-size: 11.5px;
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 250px;
+}
+
+.worker-tx-id {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.worker-progress-wrap {
+  background: var(--well);
+  border: 1px solid var(--border-subtle);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.progress-bar-mini {
+  height: 4px;
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+
+.worker-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.worker-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  font-size: 11.5px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.worker-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.worker-detail-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.worker-token-preview {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.worker-notes-text {
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.worker-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 12px;
+  margin-top: auto;
+}
+
+/* ==========================================================================
+   Quick Presets in New Transaction Modal
+   ========================================================================== */
+
+.preset-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.preset-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  padding: 6px 11px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.preset-chip:hover {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.preset-chip:active {
+  transform: translateY(0);
 }
 
 /* ==========================================================================

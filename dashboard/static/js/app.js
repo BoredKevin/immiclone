@@ -9,6 +9,7 @@ import { setTransfersView, toggleMountPause } from './modules/mount.js';
 import {
   setTxFilter,
   setWorkerFilter,
+  selectRunnerPreset,
   initWorkerCmdBar,
   regenerateWorkerCmd,
   copyWorkerCmd
@@ -31,6 +32,7 @@ import {
   openSettingsModal,
   saveSettingsConfig,
   openNewTxModal,
+  applyTxPreset,
   submitCreateTx,
   openEditTxModal,
   submitEditTx,
@@ -91,9 +93,20 @@ registerAction('submit-edit-tx', () => submitEditTx());
 // Worker Modal Actions
 registerAction('submit-worker-modal', () => submitWorkerModal());
 
-// Ephemeral Worker One-Liner
+// Ephemeral Worker Launcher & Runner Presets
 registerAction('new-session', () => regenerateWorkerCmd(true));
 registerAction('copy-worker-cmd', (data, target) => copyWorkerCmd(target));
+registerAction('select-runner-preset', (data) => selectRunnerPreset(data.preset));
+registerAction('open-cloud-shell', () => {
+  window.open('https://shell.cloud.google.com/?show=terminal', '_blank', 'noopener,noreferrer');
+});
+
+// Transaction Presets
+registerAction('apply-tx-preset', (data) => applyTxPreset(data.preset));
+registerAction('guided-create-tx', (data) => {
+  openNewTxModal();
+  applyTxPreset(data.preset);
+});
 
 // Duplication Transactions List Actions
 registerAction('filter-tx', (data) => setTxFilter(data.filter));
@@ -193,6 +206,16 @@ registerAction('stop-worker', async (data) => {
     await api.disconnectWorker(data.id);
   } catch (err) {
     alert('Error disconnecting worker: ' + err);
+  }
+});
+
+registerAction('refresh-worker-token', async (data) => {
+  if (!confirm(`Rotate and refresh authentication token for worker ${data.id}?`)) return;
+  try {
+    const res = await api.refreshWorkerToken(data.id);
+    alert(`Authentication token refreshed for worker ${data.id}.\nNew Token: ${res.token}`);
+  } catch (err) {
+    alert('Error refreshing worker token: ' + err);
   }
 });
 

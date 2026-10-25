@@ -69,6 +69,7 @@ def get_all_workers():
                 "status": w.get("status", "STANDBY"),
                 "current_tx": w.get("current_tx"),
                 "notes": w.get("notes", ""),
+                "token": w.get("token", ""),
                 "created_at": w.get("created_at", int(time.time())),
                 "last_seen_sec": int(time.time() - w.get("last_seen", 0))
             }
@@ -244,3 +245,19 @@ def prune_offline_workers():
                 delete_worker(wid)
                 removed += 1
         return removed
+
+def refresh_worker_token(wid):
+    """Generates a fresh authentication token for an existing worker and invalidates previous token."""
+    with STATE_LOCK:
+        worker = _active_workers.get(wid)
+        if not worker:
+            return None
+        old_tok = worker.get("token")
+        if old_tok and old_tok in _worker_tokens:
+            del _worker_tokens[old_tok]
+        new_tok = secrets.token_urlsafe(16)
+        worker["token"] = new_tok
+        _worker_tokens[new_tok] = wid
+        sync_workers_to_disk()
+        return new_tok
+

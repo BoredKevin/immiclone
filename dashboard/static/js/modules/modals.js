@@ -173,6 +173,42 @@ export async function loadRemotes() {
   }
 }
 
+export function applyTxPreset(presetKey) {
+  const titleEl = document.getElementById('tx-title');
+  const srcEl = document.getElementById('tx-source');
+  const dstEl = document.getElementById('tx-dest');
+  const modeEl = document.getElementById('tx-mode');
+  const prioEl = document.getElementById('tx-priority');
+  const flagsEl = document.getElementById('tx-flags');
+  const notesEl = document.getElementById('tx-notes');
+
+  if (presetKey === 'gdrive-mirror') {
+    if (titleEl) titleEl.value = 'Google Drive Cloud Mirror';
+    if (srcEl) srcEl.value = 'bkc:media';
+    if (dstEl) dstEl.value = 'gdrive-backup:archive';
+    if (modeEl) modeEl.value = 'sync';
+    if (prioEl) prioEl.value = 'high';
+    if (flagsEl) flagsEl.value = '--fast-list --transfers=8 --checkers=16 --drive-chunk-size=64M';
+    if (notesEl) notesEl.value = 'Direct gigabit cloud-to-cloud replication';
+  } else if (presetKey === 'local-ssd-backup') {
+    if (titleEl) titleEl.value = 'Local SSD Backup';
+    if (srcEl) srcEl.value = 'bkc:media';
+    if (dstEl) dstEl.value = '/mnt/ssd/immich-backup';
+    if (modeEl) modeEl.value = 'copy';
+    if (prioEl) prioEl.value = 'normal';
+    if (flagsEl) flagsEl.value = '--size-only --transfers=4 --checkers=8';
+    if (notesEl) notesEl.value = 'Local fast NVMe replication backup';
+  } else if (presetKey === 'bidirectional-verify') {
+    if (titleEl) titleEl.value = 'Integrity Check Audit';
+    if (srcEl) srcEl.value = 'bkc:media';
+    if (dstEl) dstEl.value = '/mnt/ssd/immich-backup';
+    if (modeEl) modeEl.value = 'check';
+    if (prioEl) prioEl.value = 'low';
+    if (flagsEl) flagsEl.value = '--one-way --checkers=16';
+    if (notesEl) notesEl.value = 'SHA-256 hash checksum integrity check';
+  }
+}
+
 export function openNewTxModal() {
   const titleEl = document.getElementById('tx-title');
   const srcEl = document.getElementById('tx-source');
@@ -182,7 +218,7 @@ export function openNewTxModal() {
   if (titleEl) titleEl.value = '';
   if (srcEl) srcEl.value = '';
   if (dstEl) dstEl.value = '';
-  if (flagsEl) flagsEl.value = '--size-only --transfers=4 --checkers=8';
+  if (flagsEl) flagsEl.value = '--size-only --drive-chunk-size=64M --drive-upload-cutoff=64M --buffer-size=32M --transfers=4 --checkers=8 --tpslimit=10 --drive-pacer-min-sleep=10ms';
   if (notesEl) notesEl.value = '';
   openModal('new-tx');
   loadRemotes().catch(() => {});
@@ -200,18 +236,31 @@ export async function submitCreateTx() {
     return;
   }
   const flagsInput = document.getElementById('tx-flags')?.value.trim() || '';
+  const defaultFlags = [
+    '--size-only',
+    '--drive-chunk-size=64M',
+    '--drive-upload-cutoff=64M',
+    '--buffer-size=32M',
+    '--transfers=4',
+    '--checkers=8',
+    '--tpslimit=10',
+    '--drive-pacer-min-sleep=10ms'
+  ];
   const payload = {
     title: document.getElementById('tx-title')?.value.trim() || `${src} -> ${dst}`,
     source: src,
     dest: dst,
     mode: document.getElementById('tx-mode')?.value || 'copy',
     priority: document.getElementById('tx-priority')?.value || 'normal',
-    rclone_flags: flagsInput ? flagsInput.split(/\s+/) : ['--size-only'],
+    rclone_flags: flagsInput ? flagsInput.split(/\s+/) : defaultFlags,
     notes: document.getElementById('tx-notes')?.value.trim() || ''
   };
 
   try {
-    await api.createTx(payload);
+    const res = await api.createTx(payload);
+    if (res && res.validation && res.validation.warning) {
+      alert(`[Notice] ${res.validation.warning}`);
+    }
     closeModal('new-tx');
   } catch (err) {
     alert('Error creating transaction: ' + err);

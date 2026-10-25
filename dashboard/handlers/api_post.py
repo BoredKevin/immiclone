@@ -20,6 +20,7 @@ from dashboard.services.workers import (
     reset_worker,
     delete_worker,
     prune_offline_workers,
+    refresh_worker_token,
     register_worker,
     get_worker,
     sync_workers_to_disk
@@ -35,7 +36,8 @@ from dashboard.services.transactions import (
     delete_transaction,
     clear_completed_transactions,
     record_worker_telemetry,
-    get_transaction_by_id
+    get_transaction_by_id,
+    check_cross_drive_sharing
 )
 from dashboard.services.updater import check_for_updates
 from dashboard.services.scanner import query_rclone
@@ -177,6 +179,15 @@ class PostRoutesMixin:
             self.send_json({"status": "ok", "removed": removed})
             return
 
+        elif canonical_path == "/api/v1/worker/refresh-token":
+            wid = req_data.get("worker_id", "")
+            new_tok = refresh_worker_token(wid)
+            if new_tok:
+                self.send_json({"status": "ok", "worker_id": wid, "token": new_tok})
+            else:
+                self.send_error_msg(404, "Worker Not Found")
+            return
+
         elif canonical_path == "/api/v1/worker/register":
             wid = req_data.get("worker_id", "")
             hostname = req_data.get("hostname", "unknown")
@@ -210,7 +221,7 @@ class PostRoutesMixin:
                 with STATE_LOCK:
                     worker = get_worker(wid)
                     if worker:
-                        if resp.get("state") == "COMPLETED":
+                        if resp.get("state") in ("COMPLETED", "FAILED", "PAUSED"):
                             worker["status"] = "STANDBY"
                             worker["current_tx"] = None
                         else:
@@ -245,7 +256,7 @@ class PostRoutesMixin:
                 rclone_flags=flags,
                 notes=notes
             )
-            self.send_json({"status": "ok", "tx": tx})
+            self.send_json({"status": "ok", "tx": tx, "validation": tx.get("preflight")})
             return
 
         elif canonical_path == "/api/v1/tx/update":
@@ -352,6 +363,14 @@ class PostRoutesMixin:
             rate = req_data.get("rate", "off")
             res = query_rclone("core/bwlimit", {"rate": rate})
             self.send_json({"status": "ok", "result": res, "rate": rate})
+            return
+
+        elif canonical_path == "/api/v1/rclone/check-sharing":
+            src = req_data.get("source", "")
+            dst = req_data.get("dest", "")
+            flags = req_data.get("rclone_flags", [])
+            val = check_cross_drive_sharing(src, dst, flags)
+            self.send_json(val)
             return
 
         else:

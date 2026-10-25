@@ -238,8 +238,28 @@ while true; do
         # Read dynamic flags from server (or defaults)
         mapfile -t CUSTOM_FLAGS < <(echo "$POLL_RESP" | jq -r '.tx.rclone_flags[]?' 2>/dev/null || true)
         if [[ ${#CUSTOM_FLAGS[@]} -eq 0 ]]; then
-          CUSTOM_FLAGS=("--size-only" "--transfers=4" "--checkers=8" "--tpslimit=4")
+          CUSTOM_FLAGS=(
+            "--size-only"
+            "--drive-chunk-size=64M"
+            "--drive-upload-cutoff=64M"
+            "--buffer-size=32M"
+            "--transfers=4"
+            "--checkers=8"
+            "--tpslimit=10"
+            "--drive-pacer-min-sleep=10ms"
+          )
         fi
+
+        # Sanitize flags: Strip --fast-list on Google Drive to prevent recursive pacer backoff
+        FILTERED_FLAGS=()
+        for flag in "${CUSTOM_FLAGS[@]}"; do
+          if [[ "$flag" == "--fast-list" || "$flag" == --fast-list=* ]]; then
+            echo "[⚠️] Stripped flag '${flag}' (triggers Google Drive API rate-limiting pacer backoff)."
+            continue
+          fi
+          FILTERED_FLAGS+=("$flag")
+        done
+        CUSTOM_FLAGS=("${FILTERED_FLAGS[@]}")
 
         # Launch rclone with dynamic mode and flags
         rclone "$MODE" "$SRC" "$DST" \
@@ -295,6 +315,24 @@ while true; do
           --arg file "$CUR_FILE" \
           '{worker_id:$wid, tx_id:$txid, lease_id:$lease, status:$state, bytes:$bytes, total_bytes:$total, speed_bps:$speed, eta_sec:$eta, checks:$checks, transfers:$transfers, current_file:$file}')" 2>/dev/null || echo '{}')"
 
+        # Early detection of fatal Google Drive cross-account 404 error in log
+        if grep -q -E "googleapi: Error 404|Error 404: File not found|notFound" "$RCLONE_LOG" 2>/dev/null; then
+          echo -e "\n[❌] Fatal Google Drive 404 Not Found error detected in rclone log!"
+          echo "     Destination account cannot access source remote (server-side copy permission required)."
+          kill -TERM "$RCLONE_PID" 2>/dev/null || true
+          wait "$RCLONE_PID" 2>/dev/null || true
+          RCLONE_PID=""
+          ACTIVE_TX=""
+          api_post "/api/v1/worker/report" "$(jq -nc \
+            --arg wid "$WORKER_ID" \
+            --arg txid "$TX_ID" \
+            --argjson lease "$ACTIVE_LEASE" \
+            --arg state "FAILED" \
+            --arg err "Google Drive 404 Not Found: destination account lacks read access on source remote" \
+            '{worker_id:$wid, tx_id:$txid, lease_id:$lease, status:$state, error_message:$err}')" >/dev/null || true
+          continue
+        fi
+
         # Check for fence conflict
         if echo "$REPORT_RES" | grep -q "LEASE_SUPERSEDED"; then
           echo -e "\n[🚨] Lease superseded by control server! Stopping local rclone..."
@@ -312,7 +350,24 @@ while true; do
         else
           echo -e "\n[❌] Rclone exited with code ${EXIT_CODE}. Log output:"
           tail -n 12 "$RCLONE_LOG" 2>/dev/null || true
-          api_post "/api/v1/worker/report" "{\"worker_id\":\"${WORKER_ID}\",\"tx_id\":\"${TX_ID}\",\"lease_id\":${ACTIVE_LEASE},\"status\":\"INTERRUPTED\"}" >/dev/null || true
+          if grep -q -E "googleapi: Error 404|Error 404: File not found|notFound" "$RCLONE_LOG" 2>/dev/null; then
+            echo "[❌] Detected Google Drive 404 Not Found (Cross-drive permission missing). Reporting FAILED."
+            api_post "/api/v1/worker/report" "$(jq -nc \
+              --arg wid "$WORKER_ID" \
+              --arg txid "$TX_ID" \
+              --argjson lease "$ACTIVE_LEASE" \
+              --arg state "FAILED" \
+              --arg err "Google Drive 404 Not Found: destination account lacks read access on source remote" \
+              '{worker_id:$wid, tx_id:$txid, lease_id:$lease, status:$state, error_message:$err}')" >/dev/null || true
+          else
+            api_post "/api/v1/worker/report" "$(jq -nc \
+              --arg wid "$WORKER_ID" \
+              --arg txid "$TX_ID" \
+              --argjson lease "$ACTIVE_LEASE" \
+              --arg state "INTERRUPTED" \
+              --arg err "Rclone process exited with code ${EXIT_CODE}" \
+              '{worker_id:$wid, tx_id:$txid, lease_id:$lease, status:$state, error_message:$err}')" >/dev/null || true
+          fi
         fi
       fi
       ;;

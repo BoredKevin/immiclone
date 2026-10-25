@@ -2,6 +2,7 @@ import os
 import shutil
 import time
 import json
+import threading
 import urllib.request
 from datetime import datetime
 from dashboard.config import (
@@ -30,6 +31,23 @@ _meta_cache = {
 }
 _session_max_uploaded_bytes = 0
 
+# Authoritative Cloud Quota Cache (Decoupled from 500ms SSE loop)
+_quota_lock = threading.Lock()
+_cloud_quota_cache = {
+    "remote": None,
+    "raw": {"total": 0, "used": 0, "free": 0, "trashed": 0},
+    "data": {
+        "remote": "",
+        "total": "0 B",
+        "used": "0 B",
+        "free": "0 B",
+        "trashed": "0 B",
+        "percent_used": 0.0
+    },
+    "last_updated": 0,
+    "is_updating": False
+}
+
 def get_available_remotes():
     """Parses available remotes from rclone.conf or falls back to empty list."""
     remotes = []
@@ -46,17 +64,138 @@ def get_available_remotes():
             print(f"[!] Error reading rclone config: {e}")
     return remotes
 
-def query_rclone(endpoint, payload=None):
+def query_rclone(endpoint, payload=None, timeout=0.3):
     """Sends a JSON query to the configured Rclone RC instance."""
     rc_base = get_rclone_rc_url().rstrip('/')
     url = f"{rc_base}/{endpoint}"
     data = json.dumps(payload).encode() if payload else b"{}"
     req = urllib.request.Request(url, headers={"Content-Type": "application/json"}, data=data)
     try:
-        with urllib.request.urlopen(req, timeout=0.3) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode())
     except:
         return None
+
+def fetch_cloud_quota(remote, timeout=5.0):
+    """
+    Directly queries operations/about via Rclone RC with non-destructive semantics.
+    Supports crypt and alias remotes with fallback to underlying drive if needed.
+    """
+    if not remote:
+        return {
+            "remote": "",
+            "total": "0 B",
+            "used": "0 B",
+            "free": "0 B",
+            "trashed": "0 B",
+            "percent_used": 0.0,
+            "raw": {"total": 0, "used": 0, "free": 0, "trashed": 0}
+        }
+
+    rem_param = remote if remote.endswith(":") else f"{remote}:"
+    cloud_info = query_rclone("operations/about", {"fs": rem_param}, timeout=timeout)
+
+    # Fallback to underlying remote if crypt/alias failed or returned empty
+    if not cloud_info:
+        try:
+            from dashboard.services.transactions import resolve_remote_info
+            info = resolve_remote_info(remote.rstrip(":"))
+            underlying = info.get("underlying")
+            if underlying and underlying != remote.rstrip(":"):
+                cloud_info = query_rclone("operations/about", {"fs": f"{underlying}:"}, timeout=timeout)
+        except Exception:
+            pass
+
+    cloud_info = cloud_info or {}
+    cloud_total = cloud_info.get("total", 0) or 0
+    cloud_used = cloud_info.get("used", 0) or 0
+    cloud_free = cloud_info.get("free", 0) or 0
+    cloud_trashed = cloud_info.get("trashed", 0) or 0
+    pct = round((cloud_used / cloud_total) * 100, 1) if cloud_total > 0 else 0.0
+
+    return {
+        "remote": rem_param,
+        "total": format_size(cloud_total),
+        "used": format_size(cloud_used),
+        "free": format_size(cloud_free),
+        "trashed": format_size(cloud_trashed),
+        "percent_used": pct,
+        "raw": {
+            "total": cloud_total,
+            "used": cloud_used,
+            "free": cloud_free,
+            "trashed": cloud_trashed
+        }
+    }
+
+def _async_quota_worker(remote, timeout=5.0):
+    global _cloud_quota_cache
+    try:
+        quota = fetch_cloud_quota(remote, timeout=timeout)
+        with _quota_lock:
+            # Only update if we received valid quota or uninitialized
+            if quota.get("raw", {}).get("total", 0) > 0 or _cloud_quota_cache["last_updated"] == 0:
+                _cloud_quota_cache["remote"] = remote
+                _cloud_quota_cache["raw"] = quota.get("raw", {})
+                _cloud_quota_cache["data"] = {
+                    "remote": remote,
+                    "total": quota["total"],
+                    "used": quota["used"],
+                    "free": quota["free"],
+                    "trashed": quota["trashed"],
+                    "percent_used": quota["percent_used"]
+                }
+                _cloud_quota_cache["last_updated"] = time.time()
+    except Exception as e:
+        print(f"[!] Background cloud quota refresh error for {remote}: {e}")
+    finally:
+        with _quota_lock:
+            _cloud_quota_cache["is_updating"] = False
+
+def get_cached_cloud_quota(remote=None, max_age=120, force_refresh=False, allow_blocking_initial=False):
+    """
+    Returns authoritative primary cloud quota cached for max_age seconds.
+    Non-blocking: Spawns an asynchronous background thread for cache replenishment
+    to ensure the 500ms SSE loop is never delayed by 2-4s remote API calls.
+    """
+    global _cloud_quota_cache
+    if remote is None:
+        remote = get_primary_remote()
+
+    if not remote:
+        return {
+            "remote": "",
+            "total": "0 B",
+            "used": "0 B",
+            "free": "0 B",
+            "trashed": "0 B",
+            "percent_used": 0.0
+        }
+
+    now = time.time()
+    needs_refresh = (
+        force_refresh or
+        _cloud_quota_cache["remote"] != remote or
+        (now - _cloud_quota_cache["last_updated"] > max_age)
+    )
+
+    if needs_refresh:
+        if force_refresh or (allow_blocking_initial and _cloud_quota_cache["last_updated"] == 0):
+            with _quota_lock:
+                _cloud_quota_cache["is_updating"] = True
+            _async_quota_worker(remote, timeout=5.0)
+        else:
+            with _quota_lock:
+                if not _cloud_quota_cache["is_updating"]:
+                    _cloud_quota_cache["is_updating"] = True
+                    t = threading.Thread(target=_async_quota_worker, args=(remote, 5.0), daemon=True)
+                    t.start()
+
+    with _quota_lock:
+        res = dict(_cloud_quota_cache["data"])
+        if not res.get("remote"):
+            res["remote"] = remote
+        return res
 
 def scan_files_if_needed():
     """Scans local SSD VFS cache and mount point, cached for 10 seconds under SCAN_LOCK."""
@@ -231,14 +370,9 @@ def get_live_sse_payload():
     bw_rate = bw_info.get("rate", "off") if bw_info else "off"
     is_paused = (bw_rate in ("1B", "0"))
 
-    # Dynamic primary remote quota inspection
+    # Non-blocking Authoritative Cloud Quota (120s TTL cache with background updater)
     primary_rem = get_primary_remote()
-    cloud_info = query_rclone("operations/about", {"fs": primary_rem}) if primary_rem else {}
-    cloud_info = cloud_info or {}
-    cloud_total = cloud_info.get("total", 0)
-    cloud_used = cloud_info.get("used", 0)
-    cloud_free = cloud_info.get("free", 0)
-    cloud_trashed = cloud_info.get("trashed", 0)
+    primary_cloud_data = get_cached_cloud_quota(primary_rem, max_age=120)
 
     cached_bytes = _meta_cache["cached_bytes"]
     cached_count = _meta_cache["cached_count"]
@@ -264,15 +398,6 @@ def get_live_sse_payload():
             "auto_inject": ts_cfg.get("auto_inject", True),
             "ephemeral": ts_cfg.get("ephemeral", True)
         }
-
-    primary_cloud_data = {
-        "remote": primary_rem,
-        "total": format_size(cloud_total),
-        "used": format_size(cloud_used),
-        "free": format_size(cloud_free),
-        "trashed": format_size(cloud_trashed),
-        "percent_used": round((cloud_used / cloud_total) * 100, 1) if cloud_total else 0
-    }
 
     return {
         "summary": {

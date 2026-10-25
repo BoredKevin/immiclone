@@ -16,7 +16,11 @@ from dashboard.services.scanner import (
     get_available_remotes
 )
 from dashboard.services.tailscale import load_tailscale_config, mask_secret
-from dashboard.services.transactions import load_transactions, get_transaction_by_id
+from dashboard.services.transactions import (
+    load_transactions,
+    get_transaction_by_id,
+    DEFAULT_RCLONE_FLAGS
+)
 from dashboard.services.workers import (
     load_workers,
     get_worker,
@@ -187,7 +191,7 @@ class GetRoutesMixin:
                                     "source": tx["source"],
                                     "dest": tx["dest"],
                                     "mode": tx.get("mode", "copy"),
-                                    "rclone_flags": tx.get("rclone_flags", ["--size-only", "--transfers=4", "--checkers=8", "--tpslimit=4"])
+                                    "rclone_flags": tx.get("rclone_flags", DEFAULT_RCLONE_FLAGS)
                                 }
                             }
                         elif tx and tx.get("status") == "PAUSED":
