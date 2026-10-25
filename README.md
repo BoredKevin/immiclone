@@ -10,6 +10,20 @@ Immiclone solves this by making  **your server** keep track of what needs copyin
 
 Whilst **cloud runners** replicates your files cloud-to-cloud, updates your dashboard in real-time, and vanishes when it's done.
 
+> [!WARNING]
+> ### USE STRICTLY AT YOUR OWN RISK — EXPERIMENTAL SOFTWARE
+> 
+> Immiclone is under rapid, breaking, active development. Things can, will, and frequently do break between commits. This is **not** a battle-tested, production-grade system yet, and you should **never** rely on this tool as your sole or primary backup method. Always maintain verified, independent offline copies of your irreplaceable media.
+> 
+> #### Legal Disclaimer & Limitation of Liability
+> This software is provided on an **"AS IS"** and **"AS AVAILABLE"** basis, with all faults, defects, and errors, and without warranties of any kind—whether express, statutory, or implied (including, but not limited to, the implied warranties of merchantability, fitness for a particular purpose, non-infringement, or data integrity).
+> 
+> By downloading, cloning, deploying, running, or otherwise interacting with Immiclone (including the dashboard, API, worker scripts, or rclone integrations), you explicitly acknowledge and agree that:
+> 1. **Full Assumption of Risk:** You voluntarily assume all risks related to testing and operating this software on your local host, network, cloud storage accounts, and remote compute instances.
+> 2. **Comprehensive Release of Liability:** Under no circumstances shall **BoredKevin**, maintainers, or project contributors be liable for any direct, indirect, incidental, special, consequential, exemplary, or punitive damages whatsoever—including, without limitation, loss of data, unrecoverable data deletion, media corruption, cloud storage provider account suspensions or API bans, system downtime, bandwidth overages, or financial losses—arising out of or relating to your use or inability to use this software.
+> 3. **Irrevocable Waiver:** You hereby **expressly, unconditionally, and irrevocably release, waive, and hold harmless** BoredKevin and all contributors from any and all legal claims, demands, suits, proceedings, liabilities, or expenses to the maximum extent permitted under applicable law.
+ 
+
 ---
 
 ### 1. Resume Anytime (Never Start Over)
