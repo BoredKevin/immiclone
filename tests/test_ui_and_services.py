@@ -86,12 +86,25 @@ class TestImmicloneDesignSystemAndUI(unittest.TestCase):
         # 4. Inline SVG icons
         self.assertIn("<svg class=\"icon", rendered, "Inline SVG icons missing in rendered HTML")
 
-        # 5. Consolidated Top Bar & SemVer Pill
-        self.assertIn("header-version-pill", rendered, "Clickable Version header pill missing")
-        self.assertIn("header-version-dot", rendered, "Version status dot missing")
+        # 5. Consolidated Top Bar & Subtitle SemVer Indicator
+        self.assertIn("brand-version", rendered, "Clickable Version in brand subtitle missing")
+        self.assertIn("header-poll-pill", rendered, "Polling interval status pill missing")
+        self.assertIn("poll-interval-select", rendered, "Poll frequency dropdown selector missing")
         self.assertIn("header-ts-pill", rendered, "Clickable Tailscale header pill missing")
         self.assertIn("header-ts-dot", rendered, "Tailscale status dot missing")
+        self.assertIn("header-divider", rendered, "Visual divider separating badges and buttons missing")
+        self.assertIn("btn-header", rendered, "Elevated action button styling missing")
         self.assertIn('data-action="open-modal"', rendered, "Declarative modal trigger missing")
+
+        # 5b. Mount KPI Cards Micro-Visuals & Transfers Table Structure
+        self.assertIn("speed-sparkline", rendered, "Bandwidth sparkline SVG container missing")
+        self.assertIn("stat-rc-queue", rendered, "Queue depth indicator missing")
+        self.assertIn("stat-rc-remaining", rendered, "Queue remaining bytes context missing")
+        self.assertIn("stat-rc-committed", rendered, "Committed transfers counter missing")
+        self.assertIn("stat-rc-failed", rendered, "Failed transfers counter missing")
+        self.assertIn("transfers-view-toggle", rendered, "Transfers segmented control missing")
+        self.assertIn("btn-toggle-pause", rendered, "Global mount pause toggle button missing")
+        self.assertNotIn("<th>Transferred</th>", rendered, "Redundant Transferred column should be eliminated")
 
         # 6. Queued Transaction Filter
         self.assertIn("tx-filter-queued", rendered, "Queued transaction filter pill missing")
@@ -272,6 +285,9 @@ class TestLiveDashboardServer(unittest.TestCase):
             self.assertEqual(data.get("version"), "1.0.1")
             self.assertEqual(data.get("api_version"), "v1")
             self.assertIn("semver", data)
+            self.assertEqual(data["semver"]["major"], 1)
+            self.assertEqual(data["semver"]["minor"], 0)
+            self.assertEqual(data["semver"]["patch"], 1)
             self.assertIn("git", data)
 
         # 2. Canonical /api/v1/updates
@@ -349,6 +365,18 @@ class TestLiveDashboardServer(unittest.TestCase):
             self.assertIn("one_liner", data)
             self.assertIn("worker-stable.sh", data["one_liner"])
             self.assertIn("https://raw.githubusercontent.com/BoredKevin/immiclone", data["one_liner"])
+
+    def test_rclone_throttle_api(self):
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{TEST_PORT}/api/v1/rclone/throttle",
+            data=json.dumps({"rate": "10M"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertEqual(data.get("status"), "ok")
+            self.assertEqual(data.get("rate"), "10M")
 
 if __name__ == "__main__":
     unittest.main()

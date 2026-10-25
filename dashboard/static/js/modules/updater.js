@@ -21,11 +21,24 @@ export function updateVersionAndUpdates(versionData, updatesData) {
   if (versionData) latestVersion = versionData;
   if (updatesData) latestUpdates = updatesData;
 
-  // 1. Update Header Pill
+  // 1. Update Brand Subtitle Version
+  const brandVer = document.getElementById('brand-version');
   const dot = document.getElementById('header-version-dot');
   const txt = document.getElementById('header-version-text');
 
-  const vTag = latestVersion ? latestVersion.version_tag || `v${latestVersion.version}` : 'v1.0.0';
+  const vTag = latestVersion ? latestVersion.version_tag || `v${latestVersion.version}` : 'v1.0.1';
+
+  if (brandVer) {
+    if (latestUpdates && latestUpdates.update_available) {
+      brandVer.textContent = `${vTag} (Update available)`;
+      brandVer.classList.add('has-update');
+      brandVer.title = `Update available: ${latestUpdates.latest_commit}. Click to review.`;
+    } else {
+      brandVer.textContent = vTag;
+      brandVer.classList.remove('has-update');
+      brandVer.title = 'Up to date. Click to review version & commits.';
+    }
+  }
 
   if (latestUpdates && latestUpdates.update_available) {
     if (dot) dot.className = 'status-dot dot-amber dot-pulse';

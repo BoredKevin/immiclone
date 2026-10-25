@@ -4,7 +4,8 @@
    ========================================================================== */
 
 import { initEventDelegation, registerAction, registerChange, registerInput } from './modules/events.js';
-import { startSSE, getLatestPayload } from './modules/sse.js';
+import { startSSE, getLatestPayload, setPollingInterval } from './modules/sse.js';
+import { setTransfersView, toggleMountPause } from './modules/mount.js';
 import {
   setTxFilter,
   setWorkerFilter,
@@ -209,6 +210,10 @@ registerAction('filter-media', (data) => setMediaFilter(data.filter));
 registerAction('sort-media', (data) => sortMediaTable(data.col));
 registerAction('change-page', (data) => changePage(parseInt(data.delta, 10) || 0));
 
+// Transfers Table & Mount Actions
+registerAction('toggle-transfers-view', (data) => setTransfersView(data.view));
+registerAction('toggle-mount-pause', () => toggleMountPause());
+
 // ==========================================================================
 // Change Registrations ([data-change])
 // ==========================================================================
@@ -231,6 +236,14 @@ function initApp() {
   initEventDelegation();
   startSSE();
   initWorkerCmdBar();
+
+  const pollSel = document.getElementById('poll-interval-select');
+  if (pollSel) {
+    pollSel.addEventListener('change', (e) => {
+      const ms = parseInt(e.target.value, 10);
+      setPollingInterval(ms);
+    });
+  }
 }
 
 if (document.readyState === 'loading') {

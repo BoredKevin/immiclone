@@ -15,6 +15,47 @@ export function formatRelativeTime(seconds) {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+export function formatIsoRelativeTime(isoStr) {
+  if (!isoStr) return '-';
+  try {
+    const ms = Date.now() - new Date(isoStr).getTime();
+    if (isNaN(ms)) return '-';
+    return formatRelativeTime(Math.max(0, Math.floor(ms / 1000)));
+  } catch {
+    return '-';
+  }
+}
+
+export function getMediaIcon(filename) {
+  const ext = (filename || '').split('.').pop().toLowerCase();
+  if (['mov', 'mp4', 'mkv', 'avi', 'webm', 'm4v', '3gp'].includes(ext)) {
+    return {
+      type: 'video',
+      iconClass: 'media-icon-video',
+      svg: `<svg class="icon icon-sm" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`
+    };
+  }
+  if (['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'gif', 'dng', 'raw', 'cr2', 'nef', 'arw'].includes(ext)) {
+    return {
+      type: 'image',
+      iconClass: 'media-icon-image',
+      svg: `<svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`
+    };
+  }
+  if (['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'].includes(ext)) {
+    return {
+      type: 'audio',
+      iconClass: 'media-icon-audio',
+      svg: `<svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`
+    };
+  }
+  return {
+    type: 'doc',
+    iconClass: 'media-icon-doc',
+    svg: `<svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>`
+  };
+}
+
 export function escapeHtml(str) {
   if (!str) return '';
   return String(str)

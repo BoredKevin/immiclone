@@ -10,59 +10,63 @@
         </div>
         <div>
           <div class="brand-title">Immiclone</div>
-          <div class="brand-sub">Infrastructure Control Plane • <span class="mono">immiclone</span></div>
+          <div class="brand-sub">
+            Infrastructure Control Plane • <span class="brand-version mono clickable" id="brand-version" data-action="open-modal" data-target="updates" title="Click to view Immiclone version and check for updates">v1.0.1</span>
+          </div>
         </div>
       </div>
 
-      <div class="header-pills">
-        <!-- Application Version & Update Status Pill -->
-        <div class="status-pill clickable" id="header-version-pill" data-action="open-modal" data-target="updates" title="Click to view Immiclone version and check for updates">
-          <span class="status-dot dot-green" id="header-version-dot"></span>
-          <span class="pill-label">Version:</span>
-          <span class="pill-val mono" id="header-version-text">v1.0.0</span>
+      <div class="header-actions">
+        <!-- Status Badges (Left) -->
+        <div class="header-status-group">
+          <!-- Clarified Polling Selector -->
+          <div class="status-pill" id="header-poll-pill" title="Telemetry Polling Interval">
+            <span class="status-dot dot-green dot-pulse" id="header-poll-dot"></span>
+            <span class="pill-label">Poll:</span>
+            <select class="pill-select mono" id="poll-interval-select" aria-label="Polling Interval">
+              <option value="500" selected>500ms</option>
+              <option value="1000">1s</option>
+              <option value="2000">2s</option>
+              <option value="5000">5s</option>
+              <option value="0">Paused</option>
+            </select>
+          </div>
+
+          <!-- Simplified Tailscale Status Badge -->
+          <div class="status-pill clickable" id="header-ts-pill" data-action="open-modal" data-target="tailscale" title="Tailscale Network Configuration">
+            <span class="status-dot dot-amber" id="header-ts-dot"></span>
+            <span class="pill-label">Tailscale:</span>
+            <span class="pill-val" id="header-ts-text">Checking...</span>
+          </div>
         </div>
 
-        <!-- Live Telemetry Status Pill -->
-        <div class="status-pill">
-          <span class="status-dot dot-green dot-pulse"></span>
-          <span class="pill-label">Telemetry:</span>
-          <span class="pill-val mono">500ms</span>
+        <!-- Visual Separator -->
+        <div class="header-divider"></div>
+
+        <!-- Interactive Action Buttons (Right) -->
+        <div class="header-buttons-group">
+          <button class="btn btn-sm btn-header" data-action="open-modal" data-target="settings" title="System Configuration & Mount Paths">
+            <svg class="icon icon-sm" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            Settings
+          </button>
+
+          <a href="#" target="_blank" rel="noreferrer" class="btn btn-sm btn-header" id="header-link-immich" title="Open Immich Web UI">
+            Immich Server
+            <svg class="icon icon-sm" viewBox="0 0 24 24">
+              <line x1="7" y1="17" x2="17" y2="7"></line>
+              <polyline points="7 7 17 7 17 17"></polyline>
+            </svg>
+          </a>
+          <a href="#" target="_blank" rel="noreferrer" class="btn btn-sm btn-header" id="header-link-rclone" title="Open Rclone Remote Control GUI">
+            Rclone GUI
+            <svg class="icon icon-sm" viewBox="0 0 24 24">
+              <line x1="7" y1="17" x2="17" y2="7"></line>
+              <polyline points="7 7 17 7 17 17"></polyline>
+            </svg>
+          </a>
         </div>
-
-        <!-- Consolidated Tailscale Header Pill (Clickable -> Opens Modal) -->
-        <div class="status-pill clickable" id="header-ts-pill" data-action="open-modal" data-target="tailscale" title="Click to manage Tailscale network configuration">
-          <span class="status-dot dot-amber" id="header-ts-dot"></span>
-          <span class="pill-label">Tailscale:</span>
-          <span class="pill-val mono" id="header-ts-text">Checking...</span>
-          <svg class="icon icon-sm" viewBox="0 0 24 24" style="margin-left: 2px;">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-        </div>
-
-        <!-- Global Settings Button -->
-        <button class="btn btn-sm" data-action="open-modal" data-target="settings" title="System Configuration & Mount Paths">
-          <svg class="icon icon-sm" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-          Settings
-        </button>
-
-        <!-- External Quick Links -->
-        <a href="#" target="_blank" rel="noreferrer" class="btn btn-sm" id="header-link-immich" title="Open Immich Web UI">
-          Immich Server
-          <svg class="icon icon-sm" viewBox="0 0 24 24">
-            <line x1="7" y1="17" x2="17" y2="7"></line>
-            <polyline points="7 7 17 7 17 17"></polyline>
-          </svg>
-        </a>
-        <a href="#" target="_blank" rel="noreferrer" class="btn btn-sm" id="header-link-rclone" title="Open Rclone Remote Control GUI">
-          Rclone GUI
-          <svg class="icon icon-sm" viewBox="0 0 24 24">
-            <line x1="7" y1="17" x2="17" y2="7"></line>
-            <polyline points="7 7 17 7 17 17"></polyline>
-          </svg>
-        </a>
       </div>
     </header>

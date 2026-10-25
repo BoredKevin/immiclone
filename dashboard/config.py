@@ -58,17 +58,25 @@ def get_git_info():
 
     return commit, branch
 
+def parse_semver(ver_str):
+    try:
+        parts = ver_str.lstrip("v").split(".")
+        return int(parts[0]), int(parts[1]), int(parts[2].split("-")[0])
+    except Exception:
+        return 1, 0, 1
+
 def get_version_metadata():
     """Returns structured SemVer and repository metadata."""
     commit, branch = get_git_info()
+    maj, min_, pat = parse_semver(APP_VERSION)
     return {
         "app_name": get_app_name(),
         "version": APP_VERSION,
         "version_tag": f"v{APP_VERSION}",
         "semver": {
-            "major": 1,
-            "minor": 0,
-            "patch": 0,
+            "major": maj,
+            "minor": min_,
+            "patch": pat,
             "prerelease": None,
             "build": commit[:7] if commit != "unknown" else None
         },

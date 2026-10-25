@@ -76,7 +76,7 @@ class GetRoutesMixin:
             self.send_json(check_for_updates(force=force) if force else get_update_status())
             return
 
-        # 5. SSE STREAM (Live 500ms Telemetry Broadcast)
+        # 5. SSE STREAM (Live Configurable Telemetry Broadcast)
         elif canonical_path == "/api/v1/stream":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -86,12 +86,18 @@ class GetRoutesMixin:
             self.end_headers()
 
             try:
+                interval_ms = int(query.get("interval", ["500"])[0])
+                interval_sec = max(0.2, min(60.0, interval_ms / 1000.0))
+            except Exception:
+                interval_sec = 0.5
+
+            try:
                 while True:
                     payload = get_live_sse_payload()
                     msg = f"data: {json.dumps(payload)}\n\n"
                     self.wfile.write(msg.encode("utf-8"))
                     self.wfile.flush()
-                    time.sleep(0.5)
+                    time.sleep(interval_sec)
             except (BrokenPipeError, ConnectionResetError, TimeoutError, OSError):
                 # Socket cleanly disconnected by client (browser tab closed)
                 pass

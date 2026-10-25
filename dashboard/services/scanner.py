@@ -28,6 +28,7 @@ _meta_cache = {
     "cached_bytes": 0,
     "last_scan": 0
 }
+_session_max_uploaded_bytes = 0
 
 def get_available_remotes():
     """Parses available remotes from rclone.conf or falls back to empty list."""
@@ -52,7 +53,7 @@ def query_rclone(endpoint, payload=None):
     data = json.dumps(payload).encode() if payload else b"{}"
     req = urllib.request.Request(url, headers={"Content-Type": "application/json"}, data=data)
     try:
-        with urllib.request.urlopen(req, timeout=1.5) as resp:
+        with urllib.request.urlopen(req, timeout=0.3) as resp:
             return json.loads(resp.read().decode())
     except:
         return None
@@ -163,20 +164,34 @@ def get_live_sse_payload():
     except:
         disk_free = disk_used = disk_total = 0
 
+    global _session_max_uploaded_bytes
     rc_stats = query_rclone("core/stats")
+    vfs_stats = query_rclone("vfs/stats")
+    transferred_resp = query_rclone("core/transferred")
+    bw_info = query_rclone("core/bwlimit")
+
     active_transfers = []
     speed_str = "0 B/s"
+    live_speed = 0
     total_uploaded_str = "0 B"
     transfers_done = 0
+    transfers_failed = 0
     transfers_in_progress = 0
+    uploads_queued = 0
+    remaining_bytes = 0
 
     if rc_stats:
-        total_uploaded_str = format_size(rc_stats.get("bytes", 0))
+        current_rc_bytes = rc_stats.get("bytes", 0)
+        if current_rc_bytes > _session_max_uploaded_bytes:
+            _session_max_uploaded_bytes = current_rc_bytes
+        total_uploaded_str = format_size(_session_max_uploaded_bytes)
         transfers_done = rc_stats.get("transfers", 0)
+        transfers_failed = rc_stats.get("errors", 0)
         raw_transferring = rc_stats.get("transferring", []) or []
         transfers_in_progress = len(raw_transferring)
         live_speed = sum(t.get("speed", 0) for t in raw_transferring)
         speed_str = f"{format_size(live_speed)}/s" if raw_transferring else "0 B/s"
+        remaining_bytes = sum(max(0, t.get("size", 0) - t.get("bytes", 0)) for t in raw_transferring)
 
         for t in raw_transferring:
             active_transfers.append({
@@ -187,6 +202,34 @@ def get_live_sse_payload():
                 "speed": f"{format_size(t.get('speed', 0))}/s",
                 "eta": t.get("eta", 0)
             })
+
+    if vfs_stats and isinstance(vfs_stats, dict):
+        disk_cache = vfs_stats.get("diskCache", {})
+        uploads_queued = disk_cache.get("uploadsQueued", 0)
+
+    recent_transfers = []
+    failed_transfers = []
+    if transferred_resp and isinstance(transferred_resp, dict) and "transferred" in transferred_resp:
+        all_transferred = transferred_resp.get("transferred", []) or []
+        for item in reversed(all_transferred):
+            err = item.get("error", "")
+            rec = {
+                "name": item.get("name", ""),
+                "size": format_size(item.get("size", 0)),
+                "bytes": format_size(item.get("bytes", 0)),
+                "completed_at": item.get("completed_at", ""),
+                "error": err,
+                "failed": bool(err)
+            }
+            if err:
+                if len(failed_transfers) < 25:
+                    failed_transfers.append(rec)
+            else:
+                if len(recent_transfers) < 30:
+                    recent_transfers.append(rec)
+
+    bw_rate = bw_info.get("rate", "off") if bw_info else "off"
+    is_paused = (bw_rate in ("1B", "0"))
 
     # Dynamic primary remote quota inspection
     primary_rem = get_primary_remote()
@@ -257,10 +300,19 @@ def get_live_sse_payload():
         },
         "rclone": {
             "speed": speed_str,
+            "speed_bps": live_speed,
             "total_uploaded": total_uploaded_str,
+            "total_uploaded_bytes": _session_max_uploaded_bytes,
             "transfers_done": transfers_done,
+            "transfers_failed": transfers_failed,
             "transfers_active": transfers_in_progress,
-            "jobs": active_transfers
+            "uploads_queued": uploads_queued,
+            "remaining_bytes_str": format_size(remaining_bytes),
+            "is_paused": is_paused,
+            "bw_rate": bw_rate,
+            "jobs": active_transfers,
+            "recent_transfers": recent_transfers,
+            "failed_transfers": failed_transfers
         },
         "transactions": tx_list,
         "workers": workers_list,

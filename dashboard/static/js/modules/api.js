@@ -69,3 +69,6 @@ export const pruneOfflineWorkers = () => apiPost(`${API_PREFIX}/worker/prune-off
 // Media
 export const fetchMedia = (page, limit, filter, q) =>
   apiGet(`${API_PREFIX}/media?page=${page}&limit=${limit}&filter=${encodeURIComponent(filter)}&q=${encodeURIComponent(q)}`);
+
+// Rclone Mount Control
+export const throttleMount = (rate) => apiPost(`${API_PREFIX}/rclone/throttle`, { rate });

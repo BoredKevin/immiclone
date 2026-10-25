@@ -173,8 +173,7 @@ export async function loadRemotes() {
   }
 }
 
-export async function openNewTxModal() {
-  await loadRemotes();
+export function openNewTxModal() {
   const titleEl = document.getElementById('tx-title');
   const srcEl = document.getElementById('tx-source');
   const dstEl = document.getElementById('tx-dest');
@@ -186,14 +185,25 @@ export async function openNewTxModal() {
   if (flagsEl) flagsEl.value = '--size-only --transfers=4 --checkers=8';
   if (notesEl) notesEl.value = '';
   openModal('new-tx');
+  loadRemotes().catch(() => {});
 }
 
 export async function submitCreateTx() {
+  const src = document.getElementById('tx-source')?.value.trim() || '';
+  const dst = document.getElementById('tx-dest')?.value.trim() || '';
+  if (!src) {
+    alert('Please enter a source remote or path (e.g. boredkevinmedia:crypt).');
+    return;
+  }
+  if (!dst) {
+    alert('Please enter a destination remote or path (e.g. 1337quota:crypt).');
+    return;
+  }
   const flagsInput = document.getElementById('tx-flags')?.value.trim() || '';
   const payload = {
-    title: document.getElementById('tx-title')?.value.trim() || '',
-    source: document.getElementById('tx-source')?.value.trim() || '',
-    dest: document.getElementById('tx-dest')?.value.trim() || '',
+    title: document.getElementById('tx-title')?.value.trim() || `${src} -> ${dst}`,
+    source: src,
+    dest: dst,
     mode: document.getElementById('tx-mode')?.value || 'copy',
     priority: document.getElementById('tx-priority')?.value || 'normal',
     rclone_flags: flagsInput ? flagsInput.split(/\s+/) : ['--size-only'],

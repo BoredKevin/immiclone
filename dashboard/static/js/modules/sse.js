@@ -1,5 +1,6 @@
 /* ==========================================================================
    SSE Telemetry Stream Dispatcher (API v1)
+   Provides configurable real-time telemetry streaming and distribution
    ========================================================================== */
 
 import { updateDuplicationData } from './duplication.js';
@@ -9,15 +10,41 @@ import { updateStorageMatrix } from './storage.js';
 import { updateVersionAndUpdates } from './updater.js';
 
 let latestPayload = { transactions: [], workers: [], tailscale: {}, storage: {}, rclone: {}, summary: {}, version: null, updates: null };
+let currentEvtSource = null;
+let currentPollInterval = 500;
 
 export function getLatestPayload() {
   return latestPayload;
 }
 
-export function startSSE() {
-  const evtSource = new EventSource('/api/v1/stream');
+export function startSSE(intervalMs = 500) {
+  currentPollInterval = intervalMs;
 
-  evtSource.onmessage = function(e) {
+  if (currentEvtSource) {
+    currentEvtSource.close();
+    currentEvtSource = null;
+  }
+
+  const pollDot = document.getElementById('header-poll-dot');
+
+  // If paused, update dot and do not reconnect
+  if (intervalMs <= 0) {
+    if (pollDot) {
+      pollDot.className = 'status-dot dot-gray';
+      pollDot.title = 'Telemetry polling paused';
+    }
+    return;
+  }
+
+  if (pollDot) {
+    pollDot.className = 'status-dot dot-green dot-pulse';
+    pollDot.title = `Telemetry polling every ${intervalMs}ms`;
+  }
+
+  const url = `/api/v1/stream?interval=${intervalMs}`;
+  currentEvtSource = new EventSource(url);
+
+  currentEvtSource.onmessage = function(e) {
     try {
       const data = JSON.parse(e.data);
       latestPayload = data;
@@ -27,11 +54,14 @@ export function startSSE() {
     }
   };
 
-  evtSource.onerror = function() {
+  currentEvtSource.onerror = function() {
     console.warn('[SSE] Telemetry connection disrupted, reconnecting...');
-    const dot = document.getElementById('header-ts-dot');
-    if (dot) dot.className = 'status-dot dot-amber';
+    if (pollDot) pollDot.className = 'status-dot dot-amber';
   };
+}
+
+export function setPollingInterval(intervalMs) {
+  startSSE(intervalMs);
 }
 
 function dispatchTelemetry(data) {
@@ -40,7 +70,7 @@ function dispatchTelemetry(data) {
     updateVersionAndUpdates(data.version, data.updates);
   }
 
-  // 2. Header Tailscale Status Pill
+  // 2. Simplified Header Tailscale Status Pill
   if (data.tailscale) {
     const dot = document.getElementById('header-ts-dot');
     const txt = document.getElementById('header-ts-text');
@@ -49,18 +79,17 @@ function dispatchTelemetry(data) {
 
     if (data.tailscale.configured) {
       if (dot) dot.className = 'status-dot dot-green';
-      const masked = data.tailscale.masked_key || data.tailscale.masked_api || 'Active';
-      const modeStr = (data.tailscale.mode || 'auth_key').toUpperCase();
-      if (txt) txt.textContent = `${modeStr} Ready (${masked})`;
+      if (txt) txt.textContent = 'Connected';
       if (tb) {
         tb.className = 'badge badge-running';
-        tb.textContent = `● Configured (${modeStr})`;
+        tb.textContent = `● Configured (${(data.tailscale.mode || 'auth_key').toUpperCase()})`;
       }
       if (td) {
+        const masked = data.tailscale.masked_key || data.tailscale.masked_api || 'Active';
         td.innerHTML = `Active key: <code>${masked}</code> • Ephemeral: <strong>${data.tailscale.ephemeral ? 'Yes' : 'No'}</strong> • Auto-inject: <strong>${data.tailscale.auto_inject ? 'Enabled' : 'Disabled'}</strong>`;
       }
     } else {
-      if (dot) dot.className = 'status-dot dot-red';
+      if (dot) dot.className = 'status-dot dot-gray';
       if (txt) txt.textContent = 'Not Configured';
       if (tb) {
         tb.className = 'badge badge-interrupted';

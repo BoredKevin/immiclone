@@ -38,6 +38,7 @@ from dashboard.services.transactions import (
     get_transaction_by_id
 )
 from dashboard.services.updater import check_for_updates
+from dashboard.services.scanner import query_rclone
 
 class PostRoutesMixin:
     """POST Request routing mixin for DashboardHandler supporting canonical /api/v1/ routes."""
@@ -345,6 +346,12 @@ class PostRoutesMixin:
         elif canonical_path == "/api/v1/tx/clear-completed":
             cleared = clear_completed_transactions()
             self.send_json({"status": "ok", "cleared": cleared})
+            return
+
+        elif canonical_path == "/api/v1/rclone/throttle":
+            rate = req_data.get("rate", "off")
+            res = query_rclone("core/bwlimit", {"rate": rate})
+            self.send_json({"status": "ok", "result": res, "rate": rate})
             return
 
         else:
