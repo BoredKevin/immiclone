@@ -1538,6 +1538,10 @@ tr:hover td {
   backdrop-filter: blur(6px);
 }
 
+.modal-overlay.active {
+  display: flex;
+}
+
 .modal {
   width: 100%;
   max-width: 580px;

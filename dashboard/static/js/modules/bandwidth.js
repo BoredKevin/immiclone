@@ -148,6 +148,7 @@ export function updateBandwidthTelemetry(bw) {
 export async function openBandwidthModal() {
   const modal = document.getElementById('modal-bandwidth');
   if (!modal) return;
+  modal.style.display = 'flex';
   modal.classList.add('active');
 
   const resultBox = document.getElementById('bw-test-result');
@@ -251,7 +252,10 @@ export async function saveBandwidthConfig() {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const modal = document.getElementById('modal-bandwidth');
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('active');
+    }
   } catch (err) {
     alert(`Failed to save bandwidth settings: ${err.message}`);
   }
