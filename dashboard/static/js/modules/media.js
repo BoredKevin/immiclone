@@ -1,5 +1,7 @@
 /* ==========================================================================
-   Media & Cache Catalog Controller (Tab 2)
+   Media & Cache Catalog Controller (Unified Workspace)
+   Handles lifecycle filtering (all, uploading, failed, cached, cloud),
+   real-time search, sorting, and pagination
    ========================================================================== */
 
 import { reconcileList, bindText, bindStyle, getBoundElement } from './dom.js';
@@ -14,6 +16,10 @@ let mediaFilesCache = [];
 let mediaSortCol = 'path';
 let mediaSortAsc = false;
 
+export function getMediaFilter() {
+  return currentFilter;
+}
+
 export function updateMediaSummary(summary) {
   if (!summary) return;
   const elTotal = document.getElementById('stat-total');
@@ -24,13 +30,25 @@ export function updateMediaSummary(summary) {
   const elCacheBar = document.getElementById('stat-cache-bar');
   const elDiskFree = document.getElementById('stat-disk-free');
 
-  if (elTotal) elTotal.textContent = (summary.total_files || 0).toLocaleString();
-  if (elCached) elCached.textContent = (summary.cached_files || 0).toLocaleString();
-  if (elCloud) elCloud.textContent = (summary.cloud_files || 0).toLocaleString();
+  const countAll = document.getElementById('count-media-all');
+  const countCached = document.getElementById('count-media-cached');
+  const countCloud = document.getElementById('count-media-cloud');
+
+  const totalFiles = (summary.total_files || 0);
+  const cachedFiles = (summary.cached_files || 0);
+  const cloudFiles = (summary.cloud_files || 0);
+
+  if (elTotal) elTotal.textContent = totalFiles.toLocaleString();
+  if (elCached) elCached.textContent = cachedFiles.toLocaleString();
+  if (elCloud) elCloud.textContent = cloudFiles.toLocaleString();
   if (elCachedSize) elCachedSize.textContent = summary.cached_size || '0 MB';
   if (elCachedPct) elCachedPct.textContent = (summary.cache_percent || 0) + '%';
   if (elCacheBar) elCacheBar.style.width = Math.min(100, summary.cache_percent || 0) + '%';
   if (elDiskFree) elDiskFree.textContent = summary.disk_free || '0 GB';
+
+  if (countAll) countAll.textContent = totalFiles.toLocaleString();
+  if (countCached) countCached.textContent = cachedFiles.toLocaleString();
+  if (countCloud) countCloud.textContent = cloudFiles.toLocaleString();
 }
 
 export async function loadMedia() {
@@ -54,12 +72,12 @@ export function renderMediaTable(files) {
   }
 
   // Reconcile media rows in-place using declarative <template id="tpl-media-row">
-  reconcileList(tbody, files || [], 'tpl-media-row', f => f.path, (el, f, isNew) => {
+  reconcileList(tbody, files || [], 'tpl-media-row', f => f.path, (el, f) => {
     const isCached = Boolean(f.cached);
 
     const dot = getBoundElement(el, 'status-dot');
     if (dot) {
-      dot.className = isCached ? 'status-dot dot-green' : 'status-dot dot-gray';
+      dot.className = isCached ? 'status-dot dot-blue' : 'status-dot dot-gray';
     }
     bindText(el, 'status-text', isCached ? 'Local SSD' : 'Cloud Drive');
     bindText(el, 'path', f.path || '');
@@ -145,8 +163,34 @@ export function setMediaFilter(type) {
   document.querySelectorAll('#content-media .btn-group .btn').forEach(b => {
     b.classList.toggle('active', b.dataset.filter === type);
   });
+
+  const retryBtn = document.getElementById('btn-retry-failed');
+  if (retryBtn) {
+    retryBtn.classList.toggle('hidden', type !== 'failed');
+  }
+
+  const pinnedSection = document.getElementById('pinned-uploads-section');
+  if (type === 'uploading' && pinnedSection) {
+    pinnedSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   currentPage = 1;
   loadMedia();
+}
+
+export async function retryFailedUploads() {
+  const retryBtn = document.getElementById('btn-retry-failed');
+  if (retryBtn) retryBtn.disabled = true;
+  try {
+    // Unpause or signal rclone mount to retry failed queue
+    await api.throttleMount('off');
+    alert('Retry triggered: Rclone upload queue signaled to resume transfers.');
+    loadMedia();
+  } catch (err) {
+    alert('Failed to retry transfers: ' + err);
+  } finally {
+    if (retryBtn) retryBtn.disabled = false;
+  }
 }
 
 export function onSearchInput(val) {

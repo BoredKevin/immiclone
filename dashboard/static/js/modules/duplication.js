@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Duplication Manager Controller (Tab 1)
+   Duplication Manager Controller (Tab 1 & Stage 3 Workspace)
    Implements Rule 1: Action buttons directly in <template>, toggled via .hidden
    ========================================================================== */
 
@@ -91,10 +91,10 @@ function updateCmdDisplay() {
   const cmd = generatePresetCommand(activeRunnerPreset, fullWorkerCommand);
   if (cmd) {
     displayEl.innerHTML = formatCommandHtml(cmd);
-    displayEl.title = 'Hover over blurred keys to reveal. Click Copy Runner Command to copy to clipboard.';
+    displayEl.title = 'Hover over blurred keys to reveal. Click Copy Worker Command to copy to clipboard.';
   } else {
-    displayEl.innerHTML = '<span style="color:var(--text-muted);">curl -sSL https://raw.githubusercontent.com/BoredKevin/immiclone/refs/heads/main/worker/worker-stable.sh | bash <em>(Click &ldquo;Copy Runner Command&rdquo; or &ldquo;New Session&rdquo; to launch)</em></span>';
-    displayEl.title = 'Click Copy Runner Command or New Session to generate a runner session';
+    displayEl.innerHTML = '<span style="color:var(--text-muted);">curl -sSL https://raw.githubusercontent.com/BoredKevin/immiclone/refs/heads/main/worker/worker-stable.sh | bash <em>(Click &ldquo;Copy Worker Command&rdquo; or &ldquo;New Session&rdquo; to launch)</em></span>';
+    displayEl.title = 'Click Copy Worker Command or New Session to generate a runner session';
   }
 }
 
@@ -107,6 +107,59 @@ export function updateDuplicationData(transactions, workers) {
 
   renderTransactions(latestTransactions, latestWorkers);
   renderWorkers(latestWorkers);
+  updateStage3BackupCard(latestTransactions, latestWorkers);
+  updateWorkerConnectionListener(latestWorkers);
+}
+
+function updateStage3BackupCard(transactions, workers) {
+  const routeEl = document.getElementById('backup-active-route');
+  const workerPill = document.getElementById('backup-worker-pill');
+  const workerText = document.getElementById('backup-worker-text');
+
+  if (routeEl) {
+    const activeTx = transactions.find(t => t.status === 'RUNNING') || transactions[0];
+    if (activeTx) {
+      routeEl.textContent = `${activeTx.source} -> ${activeTx.dest}`;
+    } else {
+      routeEl.textContent = 'bkc: -> backup:crypt';
+    }
+  }
+
+  const activeWorker = workers.find(w => w.status === 'RUNNING');
+  const standbyWorker = workers.find(w => w.status === 'STANDBY');
+
+  if (workerPill && workerText) {
+    if (activeWorker) {
+      workerPill.className = 'badge badge-running';
+      workerPill.innerHTML = `<span class="status-dot dot-green dot-pulse"></span> Connected: ${escapeHtml(activeWorker.name || activeWorker.id)}`;
+    } else if (standbyWorker) {
+      workerPill.className = 'badge badge-running';
+      workerPill.innerHTML = `<span class="status-dot dot-green"></span> Ready: ${escapeHtml(standbyWorker.name || standbyWorker.id)}`;
+    } else {
+      workerPill.className = 'badge badge-standby';
+      workerPill.innerHTML = '<span class="status-dot dot-amber"></span> Waiting for Worker';
+    }
+  }
+}
+
+function updateWorkerConnectionListener(workers) {
+  const listenerBar = document.getElementById('worker-connection-listener');
+  const listenerDot = document.getElementById('worker-listener-dot');
+  const listenerText = document.getElementById('worker-listener-text');
+  if (!listenerBar) return;
+
+  const connectedWorker = workers.find(w => w.status !== 'OFFLINE' || (w.last_seen_sec !== undefined && w.last_seen_sec < 10));
+  if (connectedWorker) {
+    listenerBar.classList.add('connected');
+    if (listenerDot) listenerDot.className = 'status-dot dot-green';
+    if (listenerText) {
+      listenerText.innerHTML = `<strong>Worker Connected!</strong> (${escapeHtml(connectedWorker.name || connectedWorker.id)}) &mdash; You can close this window.`;
+    }
+  } else {
+    listenerBar.classList.remove('connected');
+    if (listenerDot) listenerDot.className = 'status-dot dot-amber dot-pulse';
+    if (listenerText) listenerText.textContent = 'Listening for worker connection...';
+  }
 }
 
 export function renderTransactions(txList, workers) {
@@ -144,7 +197,7 @@ export function renderTransactions(txList, workers) {
   const standbyWorkers = workers.filter(w => w.status === 'STANDBY');
 
   // Reconcile cards in-place using declarative <template id="tpl-tx-card">
-  reconcileList(container, filtered, 'tpl-tx-card', t => t.tx_id, (el, tx, isNew) => {
+  reconcileList(container, filtered, 'tpl-tx-card', t => t.tx_id, (el, tx) => {
     const isRunning = tx.status === 'RUNNING';
     const isQueued = tx.status === 'QUEUED';
     const isInterrupted = tx.status === 'INTERRUPTED';
@@ -154,32 +207,37 @@ export function renderTransactions(txList, workers) {
 
     // Header & metadata
     bindText(el, 'title', tx.title || 'Duplication Transaction');
-    bindText(el, 'route', `${tx.source} → ${tx.dest}`);
+    bindText(el, 'route', `${tx.source} -> ${tx.dest}`);
     bindText(el, 'mode', (tx.mode || 'copy').toUpperCase());
     bindText(el, 'tx-id', tx.tx_id);
     bindText(el, 'worker-name', tx.assigned_worker || 'None');
 
-    // Status badge
+    // Mutually exclusive human status badge
     const badgeEl = getBoundElement(el, 'status-badge');
     if (badgeEl) {
       if (isRunning) {
         badgeEl.className = 'badge badge-running';
-        badgeEl.innerHTML = `<span class="status-dot dot-green dot-pulse"></span> RUNNING (Lease #${tx.lease_id || 1})`;
+        badgeEl.innerHTML = `<span class="status-dot dot-green dot-pulse"></span> Transferring (Lease #${tx.lease_id || 1})`;
       } else if (isQueued) {
-        badgeEl.className = 'badge badge-queued';
-        badgeEl.innerHTML = '<span class="status-dot dot-amber"></span> QUEUED';
+        if (tx.assigned_worker) {
+          badgeEl.className = 'badge badge-queued';
+          badgeEl.innerHTML = '<span class="status-dot dot-amber"></span> Queued for Worker';
+        } else {
+          badgeEl.className = 'badge badge-standby';
+          badgeEl.innerHTML = '<span class="status-dot dot-amber"></span> Waiting for Worker';
+        }
       } else if (isInterrupted) {
         badgeEl.className = 'badge badge-interrupted';
-        badgeEl.innerHTML = '<span class="status-dot dot-red"></span> INTERRUPTED';
+        badgeEl.innerHTML = '<span class="status-dot dot-red"></span> Interrupted';
       } else if (isPaused) {
         badgeEl.className = 'badge badge-paused';
-        badgeEl.innerHTML = '<span class="status-dot dot-gray"></span> PAUSED';
+        badgeEl.innerHTML = '<span class="status-dot dot-gray"></span> Paused';
       } else if (isCompleted) {
         badgeEl.className = 'badge badge-completed';
-        badgeEl.innerHTML = '<span class="status-dot dot-purple"></span> COMPLETED';
+        badgeEl.innerHTML = '<span class="status-dot dot-purple"></span> Completed';
       } else if (isCancelled) {
         badgeEl.className = 'badge badge-interrupted';
-        badgeEl.innerHTML = '<span class="status-dot dot-red"></span> CANCELLED';
+        badgeEl.innerHTML = '<span class="status-dot dot-red"></span> Cancelled';
       }
     }
 
@@ -191,7 +249,7 @@ export function renderTransactions(txList, workers) {
     if (notesWrap) {
       if (tx.notes) {
         notesWrap.className = '';
-        notesWrap.innerHTML = `<span class="tx-meta-sep">•</span> <span>Notes: ${escapeHtml(tx.notes)}</span>`;
+        notesWrap.innerHTML = `<span class="tx-meta-sep">&bull;</span> <span>Notes: ${escapeHtml(tx.notes)}</span>`;
       } else {
         notesWrap.className = 'hidden';
       }
@@ -220,9 +278,13 @@ export function renderTransactions(txList, workers) {
     const fillEl = getBoundElement(el, 'progress-fill');
     if (fillEl) fillEl.className = `progress-fill ${fillClass}`;
 
-    bindText(el, 'current-file', tx.current_file || 'Idle');
+    // Current file resolution (resolving state conflict so CANCELLED doesn't show Queued)
+    let currentFileText = tx.current_file || 'Idle';
+    if (isCancelled) currentFileText = 'Cancelled';
+    else if (isCompleted) currentFileText = 'Finished';
+    bindText(el, 'current-file', currentFileText);
 
-    // Rule 1: Toggle action buttons directly in <template> via .hidden (Zero destruction)
+    // Rule 1: Toggle action buttons directly in <template> via .hidden
     if (isRunning) {
       bindHidden(el, 'actions-running', false);
       bindHidden(el, 'actions-pending', true);
@@ -240,7 +302,6 @@ export function renderTransactions(txList, workers) {
           bindHidden(el, 'assign-group', false);
           bindHidden(el, 'no-workers-msg', true);
 
-          // Update options only if workers changed to preserve selection
           const prevVal = sel.value;
           const optionsSig = standbyWorkers.map(w => w.id).join(',');
           if (sel.dataset.sig !== optionsSig) {
@@ -267,7 +328,7 @@ export function renderTransactions(txList, workers) {
 }
 
 export function renderWorkers(workers) {
-  const container = document.getElementById('workers-container') || document.getElementById('workers-table-body');
+  const container = document.getElementById('workers-container');
   if (!container) return;
 
   const activeCount = workers.filter(w => w.status !== 'OFFLINE').length;
@@ -291,7 +352,7 @@ export function renderWorkers(workers) {
   }
 
   // Reconcile worker cards in-place using declarative <template id="tpl-worker-row">
-  reconcileList(container, filtered, 'tpl-worker-row', w => w.id, (el, w, isNew) => {
+  reconcileList(container, filtered, 'tpl-worker-row', w => w.id, (el, w) => {
     const isRunning = w.status === 'RUNNING';
     const isOffline = w.status === 'OFFLINE';
 
@@ -316,7 +377,7 @@ export function renderWorkers(workers) {
     bindText(el, 'notes', w.notes || 'None');
 
     // Semver badge
-    const wVer = w.version || '1.0.1';
+    const wVer = w.version || '1.1.0';
     const verBadge = el.querySelector('[data-bind="version-badge"]');
     if (verBadge) {
       verBadge.textContent = wVer.startsWith('v') ? wVer : `v${wVer}`;
@@ -340,8 +401,6 @@ export function renderWorkers(workers) {
     if (hbDot) {
       if (isOffline) {
         hbDot.className = 'status-dot dot-red';
-      } else if (isRunning) {
-        hbDot.className = 'status-dot dot-green dot-pulse';
       } else {
         hbDot.className = 'status-dot dot-green dot-pulse';
       }
@@ -364,7 +423,7 @@ export function renderWorkers(workers) {
     // Assigned transaction route & mini progress bar
     const tx = latestTransactions.find(t => t.tx_id === w.current_tx);
     if (w.current_tx && tx) {
-      bindText(el, 'tx-route', `${tx.source} → ${tx.dest}`);
+      bindText(el, 'tx-route', `${tx.source} -> ${tx.dest}`);
       bindText(el, 'tx-id', tx.tx_id);
       bindHidden(el, 'tx-progress-wrap', false);
 
@@ -466,7 +525,6 @@ export async function copyToClipboard(text) {
 
 export async function copyWorkerCmd(targetBtn) {
   if (!fullWorkerCommand) {
-    // Generate session on-demand if user copies before generating
     await regenerateWorkerCmd(false);
   }
   const cmd = generatePresetCommand(activeRunnerPreset, fullWorkerCommand) || document.getElementById('worker-cmd-display')?.innerText || '';
@@ -476,7 +534,7 @@ export async function copyWorkerCmd(targetBtn) {
   if (ok) {
     if (targetBtn) {
       const orig = targetBtn.innerHTML;
-      targetBtn.innerHTML = '✓ Copied!';
+      targetBtn.innerHTML = 'Copied!';
       setTimeout(() => { targetBtn.innerHTML = orig; }, 1800);
     }
   } else {

@@ -96,21 +96,24 @@ class TestImmicloneDesignSystemAndUI(unittest.TestCase):
         self.assertIn("btn-header", rendered, "Elevated action button styling missing")
         self.assertIn('data-action="open-modal"', rendered, "Declarative modal trigger missing")
 
-        # 5b. Mount KPI Cards Micro-Visuals & Transfers Table Structure
+        # 5b. Pinned Active Uploads & Transfers Table Structure
         self.assertIn("speed-sparkline", rendered, "Bandwidth sparkline SVG container missing")
         self.assertIn("stat-rc-queue", rendered, "Queue depth indicator missing")
         self.assertIn("stat-rc-remaining", rendered, "Queue remaining bytes context missing")
         self.assertIn("stat-rc-committed", rendered, "Committed transfers counter missing")
         self.assertIn("stat-rc-failed", rendered, "Failed transfers counter missing")
-        self.assertIn("transfers-view-toggle", rendered, "Transfers segmented control missing")
+        self.assertIn("pinned-uploads-section", rendered, "Pinned active uploads section missing")
         self.assertIn("btn-toggle-pause", rendered, "Global mount pause toggle button missing")
+        self.assertIn("btn-retry-failed", rendered, "Retry failed uploads action button missing")
         self.assertNotIn("<th>Transferred</th>", rendered, "Redundant Transferred column should be eliminated")
 
         # 6. Queued Transaction Filter
         self.assertIn("tx-filter-queued", rendered, "Queued transaction filter pill missing")
         self.assertIn("count-tx-queued", rendered, "Queued count badge missing")
 
-        # 7. Single-line Terminal Bar & 3 Runner Presets
+        # 7. Single-line Terminal Bar & 3 Runner Presets (Guided Worker Launcher Modal)
+        self.assertIn("modal-worker-launcher", rendered, "Worker launcher modal missing")
+        self.assertIn("worker-connection-listener", rendered, "Worker connection listener bar missing")
         self.assertIn("terminal-bar", rendered, "Sleek terminal command bar missing")
         self.assertIn("worker-cmd-display", rendered, "Worker command display missing")
         self.assertIn('data-preset="cloud-shell"', rendered, "Google Cloud Shell runner preset missing")
@@ -119,9 +122,12 @@ class TestImmicloneDesignSystemAndUI(unittest.TestCase):
         self.assertIn('data-action="open-cloud-shell"', rendered, "Open in Cloud Shell button missing")
         self.assertIn("btn-open-cloud-shell", rendered, "Open in Cloud Shell button ID missing")
 
-        # 8. Multi-Cloud & Host Storage Matrix (Authoritative Cloud)
+        # 8. 3-Stage Pipeline Header Track (Local SSD & Cache, Main Cloud, Offsite Backup)
+        self.assertIn("pipeline-track", rendered, "3-Stage pipeline track missing")
+        self.assertIn("stage-card-local", rendered, "Stage 1 Local SSD card missing")
+        self.assertIn("stage-card-cloud", rendered, "Stage 2 Main Cloud card missing")
+        self.assertIn("stage-card-backup", rendered, "Stage 3 Offsite Backup card missing")
         self.assertIn("cloud-remotes-grid", rendered, "Dynamic cloud remotes grid container missing")
-        self.assertIn("Local Host Storage Matrix", rendered, "Host storage matrix missing")
         self.assertIn("card-primary-cloud", rendered, "Authoritative primary cloud card missing")
         self.assertIn("cloud-used", rendered, "cloud-used element missing")
         self.assertIn("cloud-total", rendered, "cloud-total element missing")
@@ -299,12 +305,12 @@ class TestLiveDashboardServer(unittest.TestCase):
         with urllib.request.urlopen(url_ver, timeout=3) as resp:
             self.assertEqual(resp.status, 200)
             data = json.loads(resp.read().decode("utf-8"))
-            self.assertEqual(data.get("version"), "1.0.1")
+            self.assertEqual(data.get("version"), "1.1.0")
             self.assertEqual(data.get("api_version"), "v1")
             self.assertIn("semver", data)
             self.assertEqual(data["semver"]["major"], 1)
-            self.assertEqual(data["semver"]["minor"], 0)
-            self.assertEqual(data["semver"]["patch"], 1)
+            self.assertEqual(data["semver"]["minor"], 1)
+            self.assertEqual(data["semver"]["patch"], 0)
             self.assertIn("git", data)
 
         # 2. Canonical /api/v1/updates
@@ -346,7 +352,7 @@ class TestLiveDashboardServer(unittest.TestCase):
         with urllib.request.urlopen(url_ver_legacy, timeout=3) as resp:
             self.assertEqual(resp.status, 200)
             data = json.loads(resp.read().decode("utf-8"))
-            self.assertEqual(data.get("version"), "1.0.1")
+            self.assertEqual(data.get("version"), "1.1.0")
 
     def test_get_api_v1_media(self):
         url = f"http://127.0.0.1:{TEST_PORT}/api/v1/media?page=1&limit=10"

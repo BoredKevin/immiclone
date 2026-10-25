@@ -16,6 +16,26 @@
           </svg>
         </button>
       </div>
+
+      <!-- Telemetry Polling Frequency Control -->
+      <div class="form-group">
+        <label style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Telemetry Polling Frequency</span>
+          <span class="status-pill" id="header-poll-pill" style="padding: 2px 8px; font-size:11px;">
+            <span class="status-dot dot-green dot-pulse" id="header-poll-dot"></span>
+            <span class="pill-label">Live</span>
+          </span>
+        </label>
+        <select class="form-select mono" id="poll-interval-select" aria-label="Polling Interval">
+          <option value="500" selected>500ms (High-frequency real-time)</option>
+          <option value="1000">1s (Standard)</option>
+          <option value="2000">2s (Relaxed)</option>
+          <option value="5000">5s (Low bandwidth)</option>
+          <option value="0">Paused (Manual refresh only)</option>
+        </select>
+        <div class="form-hint">Controls how frequently Immiclone polls Rclone and system telemetry.</div>
+      </div>
+
       <div class="form-group">
         <label>Primary Cloud Remote</label>
         <input type="text" class="form-input mono" id="settings-primary-remote" placeholder="remote:">

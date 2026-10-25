@@ -11,7 +11,7 @@
         <div>
           <div class="brand-title">Immiclone</div>
           <div class="brand-sub">
-            Infrastructure Control Plane • <span class="brand-version mono clickable" id="brand-version" data-action="open-modal" data-target="updates" title="Click to view Immiclone version and check for updates">v1.0.1</span>
+            Infrastructure Control Plane • <span class="brand-version mono clickable" id="brand-version" data-action="open-modal" data-target="updates" title="Click to view Immiclone version and check for updates">v1.1.0</span>
           </div>
         </div>
       </div>
@@ -19,20 +19,7 @@
       <div class="header-actions">
         <!-- Status Badges (Left) -->
         <div class="header-status-group">
-          <!-- Clarified Polling Selector -->
-          <div class="status-pill" id="header-poll-pill" title="Telemetry Polling Interval">
-            <span class="status-dot dot-green dot-pulse" id="header-poll-dot"></span>
-            <span class="pill-label">Poll:</span>
-            <select class="pill-select mono" id="poll-interval-select" aria-label="Polling Interval">
-              <option value="500" selected>500ms</option>
-              <option value="1000">1s</option>
-              <option value="2000">2s</option>
-              <option value="5000">5s</option>
-              <option value="0">Paused</option>
-            </select>
-          </div>
-
-          <!-- Simplified Tailscale Status Badge -->
+          <!-- Compact Tailscale Status Indicator -->
           <div class="status-pill clickable" id="header-ts-pill" data-action="open-modal" data-target="tailscale" title="Tailscale Network Configuration">
             <span class="status-dot dot-amber" id="header-ts-dot"></span>
             <span class="pill-label">Tailscale:</span>
@@ -45,7 +32,7 @@
 
         <!-- Interactive Action Buttons (Right) -->
         <div class="header-buttons-group">
-          <button class="btn btn-sm btn-header" data-action="open-modal" data-target="settings" title="System Configuration & Mount Paths">
+          <button class="btn btn-sm btn-header btn-primary" data-action="open-modal" data-target="settings" title="System Configuration & Mount Paths">
             <svg class="icon icon-sm" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="3"></circle>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -53,16 +40,26 @@
             Settings
           </button>
 
-          <a href="#" target="_blank" rel="noreferrer" class="btn btn-sm btn-header" id="header-link-immich" title="Open Immich Web UI">
-            Immich Server
+          <a href="#" target="_blank" rel="noreferrer" class="btn btn-sm btn-header btn-ghost" id="header-link-immich" title="Open Immich Web UI">
             <svg class="icon icon-sm" viewBox="0 0 24 24">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+            </svg>
+            Immich Server
+            <svg class="icon icon-xs" viewBox="0 0 24 24">
               <line x1="7" y1="17" x2="17" y2="7"></line>
               <polyline points="7 7 17 7 17 17"></polyline>
             </svg>
           </a>
-          <a href="#" target="_blank" rel="noreferrer" class="btn btn-sm btn-header" id="header-link-rclone" title="Open Rclone Remote Control GUI">
-            Rclone GUI
+          <a href="#" target="_blank" rel="noreferrer" class="btn btn-sm btn-header btn-ghost" id="header-link-rclone" title="Open Rclone Remote Control GUI">
             <svg class="icon icon-sm" viewBox="0 0 24 24">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            Rclone GUI
+            <svg class="icon icon-xs" viewBox="0 0 24 24">
               <line x1="7" y1="17" x2="17" y2="7"></line>
               <polyline points="7 7 17 7 17 17"></polyline>
             </svg>

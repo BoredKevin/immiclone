@@ -1,0 +1,234 @@
+    <!-- 3-STAGE PIPELINE HEADER TRACK -->
+    <div class="pipeline-grid" id="pipeline-track">
+      <!-- STAGE 1: LOCAL SSD & CACHE -->
+      <div class="card stage-card" id="stage-card-local" data-action="select-pipeline-stage" data-stage="local" title="Click to view local SSD cached media">
+        <div class="stage-header">
+          <div class="stage-title-wrap">
+            <span class="stage-step-tag">STAGE 1</span>
+            <div class="stage-title">
+              <svg class="icon icon-sm" viewBox="0 0 24 24">
+                <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                <line x1="6" y1="18" x2="6.01" y2="18"></line>
+              </svg>
+              Local SSD & Cache
+            </div>
+          </div>
+          <span class="badge badge-standby" id="badge-stage-local">Local Host</span>
+        </div>
+
+        <!-- Metric Readouts -->
+        <div class="stage-metrics-row">
+          <div class="stage-metric">
+            <span class="stage-metric-label">Root SSD Free</span>
+            <span class="stage-metric-val tabular-nums" id="ssd-free">0 GB</span>
+            <span class="stage-metric-sub"><span id="ssd-pct" class="tabular-nums">0%</span> used of <span id="ssd-total" class="tabular-nums">0 GB</span></span>
+          </div>
+          <div class="stage-metric">
+            <span class="stage-metric-label">VFS Cache Limit</span>
+            <span class="stage-metric-val tabular-nums" id="stat-cached-size">0 MB</span>
+            <span class="stage-metric-sub"><span id="stat-cached" class="tabular-nums">0</span> files cached</span>
+          </div>
+        </div>
+
+        <!-- Dual Progress Bar: Root SSD & Cache -->
+        <div class="progress-bar" style="margin-top: 8px;">
+          <div class="progress-fill green" id="ssd-bar" style="width: 0%"></div>
+        </div>
+        <div class="progress-bar" style="margin-top: 4px; height: 3px;">
+          <div class="progress-fill blue" id="vfs-bar" style="width: 0%"></div>
+        </div>
+
+        <!-- Plain-English Microcopy Subtext -->
+        <div class="stage-subtext" id="vfs-cache-policy-subtext">
+          Auto-managed cache (oldest synced files automatically cleared for new media)
+        </div>
+
+        <!-- Low Disk Space Warning Link (Triggered at >90% Root SSD Used) -->
+        <div class="stage-warning-hint hidden" id="ssd-warning-hint">
+          <svg class="icon icon-xs" viewBox="0 0 24 24" style="color:var(--amber);">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <a href="#" class="warning-link" data-action="open-modal" data-target="settings">Low disk space &mdash; Reduce Cache Limit in Settings</a>
+        </div>
+
+        <!-- Hidden compatibility elements for existing telemetry hooks -->
+        <span id="ssd-used" class="hidden">0 GB</span>
+        <span id="stat-disk-free" class="hidden">0 GB</span>
+        <div id="stat-disk-bar" class="hidden" style="width:0%"></div>
+        <div id="stat-cache-bar" class="hidden" style="width:0%"></div>
+        <span id="stat-cached-pct" class="hidden">0%</span>
+        <span id="vfs-used" class="hidden">0 GB</span>
+        <span id="vfs-total" class="hidden">10.0 GB</span>
+        <span id="vfs-pct" class="hidden">0%</span>
+
+        <!-- Volatile RAM-Disk (/dev/shm) Container (Auto-hidden if 0 GB) -->
+        <div class="stage-ram-box hidden" id="shm-container">
+          <span class="stage-ram-label">RAM-Disk (/dev/shm):</span>
+          <span class="stage-ram-val tabular-nums" id="shm-used">0 GB</span> /
+          <span class="stage-ram-total tabular-nums" id="shm-total">0 GB</span>
+          <div class="progress-bar" style="height:3px; margin-top:2px;">
+            <div class="progress-fill purple" id="shm-bar" style="width:0%"></div>
+          </div>
+          <span id="shm-free" class="hidden">0 GB</span>
+          <span id="shm-pct" class="hidden">0%</span>
+        </div>
+      </div>
+
+      <!-- CONNECTOR 1: SYNC FLOW (LOCAL -> MAIN CLOUD) -->
+      <div class="pipeline-connector" id="pipeline-connector-sync">
+        <div class="connector-telemetry">
+          <div class="connector-speed tabular-nums" id="stat-rc-speed">0 B/s</div>
+          <div class="connector-sparkline">
+            <svg class="sparkline-svg" id="speed-sparkline" viewBox="0 0 120 40" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="speedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#10b981" stop-opacity="0.30"/>
+                  <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
+                </linearGradient>
+              </defs>
+              <path class="sparkline-area" id="sparkline-area" d="M 0 40 L 120 40 Z" fill="url(#speedGrad)"></path>
+              <path class="sparkline-line" id="sparkline-line" d="M 0 40 L 120 40" fill="none" stroke="#10b981" stroke-width="1.5"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="connector-arrow">
+          <svg class="icon icon-sm" viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <!-- STAGE 2: MAIN CLOUD DRIVE (bkc:) -->
+      <div class="card stage-card active" id="stage-card-cloud" data-action="select-pipeline-stage" data-stage="cloud" title="Click to view all cloud library media and active sync activity">
+        <div class="stage-header">
+          <div class="stage-title-wrap">
+            <span class="stage-step-tag">STAGE 2</span>
+            <div class="stage-title">
+              <svg class="icon icon-sm" viewBox="0 0 24 24">
+                <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+              </svg>
+              <span id="cloud-title">Main Cloud Drive (bkc:)</span>
+            </div>
+          </div>
+          <span class="badge badge-running" id="card-primary-cloud" data-key="primary-cloud">
+            <span class="status-dot dot-green dot-pulse"></span> Primary Master
+          </span>
+        </div>
+
+        <!-- Cloud Capacity Metrics -->
+        <div class="stage-metrics-row">
+          <div class="stage-metric">
+            <span class="stage-metric-label">Cloud Quota Used</span>
+            <span class="stage-metric-val tabular-nums" id="cloud-used">0 GB</span>
+            <span class="stage-metric-sub">of <span id="cloud-total" class="tabular-nums">0 GB</span> (<span id="cloud-pct" class="tabular-nums">0%</span>)</span>
+          </div>
+          <div class="stage-metric">
+            <span class="stage-metric-label">Indexed Library Media</span>
+            <span class="stage-metric-val tabular-nums" id="stat-total">0</span>
+            <span class="stage-metric-sub">Indexed master files</span>
+          </div>
+        </div>
+
+        <!-- Quota Progress Bar -->
+        <div class="progress-bar" style="margin-top: 8px;">
+          <div class="progress-fill purple" id="cloud-bar" style="width: 0%"></div>
+        </div>
+
+        <!-- Active Sync Status Pills -->
+        <div class="stage-sync-status">
+          <span class="badge badge-running clickable" data-action="filter-media" data-filter="uploading" title="Filter to active uploads">
+            <span class="status-dot dot-green dot-pulse"></span>
+            <span id="stat-rc-active" class="tabular-nums">0</span> Uploading
+          </span>
+          <span class="badge badge-interrupted clickable" data-action="filter-media" data-filter="failed" title="Filter to failed uploads">
+            <span class="status-dot dot-red"></span>
+            <span id="stat-rc-failed" class="tabular-nums">0</span> Failed
+          </span>
+          <span class="stage-quota-free">Free: <strong id="cloud-free" class="tabular-nums">0 GB</strong></span>
+        </div>
+
+        <!-- Compatibility Telemetry Elements -->
+        <div id="cloud-remotes-grid" class="hidden"></div>
+        <span id="cloud-trash" class="hidden">0 GB</span>
+        <span id="stat-cloud" class="hidden">0</span>
+        <span id="stat-rc-queue" class="hidden">0 queued</span>
+        <span id="stat-rc-remaining" class="hidden">0 B remaining</span>
+        <span id="stat-rc-done" class="hidden">0</span>
+        <span id="stat-rc-committed" class="hidden">0 committed</span>
+        <span id="stat-rc-total" class="hidden">0 B</span>
+      </div>
+
+      <!-- CONNECTOR 2: REPLICATION FLOW (MAIN CLOUD -> OFFSITE BACKUP) -->
+      <div class="pipeline-connector" id="pipeline-connector-backup">
+        <div class="connector-label">Offsite Mirror</div>
+        <div class="connector-arrow">
+          <svg class="icon icon-sm" viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <!-- STAGE 3: OFFSITE BACKUP -->
+      <div class="card stage-card" id="stage-card-backup" data-action="select-pipeline-stage" data-stage="backup" title="Click to view duplication transactions and cloud workers">
+        <div class="stage-header">
+          <div class="stage-title-wrap">
+            <span class="stage-step-tag">STAGE 3</span>
+            <div class="stage-title">
+              <svg class="icon icon-sm" viewBox="0 0 24 24">
+                <polyline points="16 16 12 12 8 16"></polyline>
+                <line x1="12" y1="12" x2="12" y2="21"></line>
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+                <polyline points="16 16 12 12 8 16"></polyline>
+              </svg>
+              Offsite Backup
+            </div>
+          </div>
+          <span class="badge" id="badge-stage-backup">Encrypted Secondary</span>
+        </div>
+
+        <!-- Route & Worker Details -->
+        <div class="stage-backup-body">
+          <div class="stage-route-wrap">
+            <span class="stage-route-label">Active Route</span>
+            <span class="stage-route-display mono" id="backup-active-route">bkc: &rarr; backup:crypt</span>
+          </div>
+
+          <div class="stage-worker-status-wrap">
+            <span class="badge badge-standby" id="backup-worker-pill">
+              <span class="status-dot dot-amber"></span>
+              <span id="backup-worker-text">Waiting for Worker</span>
+            </span>
+            <button class="btn btn-sm btn-accent" data-action="open-modal" data-target="worker-launcher" title="Open Guided Worker Launcher">
+              <svg class="icon icon-xs" viewBox="0 0 24 24">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Start Worker
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Template: Cloud Remote Quota Card -->
+    <template id="tpl-remote-card">
+      <div class="card" data-key="">
+        <div class="card-title">
+          <span>Remote: <strong class="mono" style="color:var(--heading);" data-bind="remote-name"></strong></span>
+          <span class="badge" style="background:rgba(255,255,255,0.06); font-size:10px;" data-bind="remote-type">Cloud</span>
+        </div>
+        <div class="card-val tabular-nums" data-bind="used">0 B</div>
+        <div class="card-sub">Used of <span class="tabular-nums" data-bind="total">Unlimited</span> (<span class="tabular-nums" data-bind="pct">0%</span>)</div>
+        <div class="progress-bar"><div class="progress-fill purple" data-bind="progress-bar" style="width: 0%"></div></div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:10px;">
+          Free: <strong class="tabular-nums" style="color:var(--heading);" data-bind="free">Unknown</strong>
+          <span data-bind="trash-wrap"> | Trash: <span class="tabular-nums" data-bind="trash">0 B</span></span>
+        </div>
+      </div>
+    </template>
+

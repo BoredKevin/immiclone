@@ -1,31 +1,51 @@
-    <!-- TAB 2: MEDIA & CACHE -->
-    <div class="tab-content" id="content-media">
-      <div class="stats-grid">
-        <div class="card">
-          <div class="card-title">Total Library Media</div>
-          <div class="card-val tabular-nums" id="stat-total">0</div>
-          <div class="card-sub">Indexed master photos & videos in Immich</div>
+    <!-- UNIFIED LIBRARY & SYNC ACTIVITY WORKSPACE (STAGES 1 & 2) -->
+    <div class="tab-content active" id="content-media">
+      
+      <!-- PINNED ACTIVE UPLOADS SECTION (HEIGHT-BOUNDED AT 240PX) -->
+      <div class="pinned-uploads-card" id="pinned-uploads-section">
+        <div class="pinned-header-bar">
+          <div class="section-title">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" style="color:var(--accent);">
+              <polyline points="16 16 12 12 8 16"></polyline>
+              <line x1="12" y1="12" x2="12" y2="21"></line>
+              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+            </svg>
+            <span>Active Cloud Transfers</span>
+            <span class="badge badge-running" style="font-size:11px; margin-left:8px;">
+              <span class="status-dot dot-green dot-pulse"></span>
+              <span id="count-active" class="tabular-nums">0</span> Active
+            </span>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-sm btn-header" id="btn-toggle-pause" data-action="toggle-mount-pause" title="Pause or resume cloud uploads">
+              <span id="pause-btn-icon">
+                <svg class="icon icon-xs" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+              </span>
+              <span id="pause-btn-text">Pause Uploads</span>
+            </button>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-title">Cached on Local SSD</div>
-          <div class="card-val tabular-nums" id="stat-cached">0</div>
-          <div class="card-sub"><span id="stat-cached-size" class="tabular-nums">0 MB</span> of 10.0 GB limit (<span id="stat-cached-pct" class="tabular-nums">0%</span>)</div>
-          <div class="progress-bar"><div class="progress-fill blue" id="stat-cache-bar" style="width: 0%"></div></div>
-        </div>
-        <div class="card">
-          <div class="card-title" id="stat-cloud-label">Cloud-Only Storage</div>
-          <div class="card-val tabular-nums" id="stat-cloud">0</div>
-          <div class="card-sub">Evicted from SSD, preserved in encrypted cloud</div>
-        </div>
-        <div class="card">
-          <div class="card-title">Host Free Root Disk</div>
-          <div class="card-val tabular-nums" id="stat-disk-free">0 GB</div>
-          <div class="card-sub">Available capacity on host root SSD</div>
-          <div class="progress-bar"><div class="progress-fill green" id="stat-disk-bar" style="width: 0%"></div></div>
+
+        <div class="pinned-table-wrap">
+          <table class="pinned-table">
+            <thead>
+              <tr>
+                <th style="width: 48%;">File Name</th>
+                <th style="width: 28%;">Progress / Status</th>
+                <th style="text-align: right; width: 12%;">Speed</th>
+                <th style="text-align: right; width: 12%;">ETA / Status</th>
+              </tr>
+            </thead>
+            <tbody id="jobs-table-body">
+              <tr id="jobs-empty-row"><td colspan="4" class="empty-state" id="jobs-empty-msg">No active uploads right now. Mount cache is quiescent.</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div class="controls">
+      <!-- UNIFIED LIFECYCLE FILTER BAR & CONTROLS -->
+      <div class="controls" style="margin-top: 14px;">
         <div class="search-box">
           <svg class="icon search-icon" viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8"></circle>
@@ -33,13 +53,42 @@
           </svg>
           <input type="text" class="search-input" id="search" placeholder="Search file names, folders, year/month..." data-input="search-media">
         </div>
-        <div class="btn-group">
-          <button class="btn btn-sm active" id="filter-all" data-action="filter-media" data-filter="all">All</button>
-          <button class="btn btn-sm" id="filter-cached" data-action="filter-media" data-filter="cached">Cached (Local SSD)</button>
-          <button class="btn btn-sm" id="filter-cloud" data-action="filter-media" data-filter="cloud">Cloud-Only</button>
+
+        <div class="filter-controls-group">
+          <div class="btn-group">
+            <button class="btn btn-sm active" id="filter-all" data-action="filter-media" data-filter="all">
+              All Media (<span id="count-media-all" class="tabular-nums">0</span>)
+            </button>
+            <button class="btn btn-sm" id="filter-uploading" data-action="filter-media" data-filter="uploading">
+              <span class="status-dot dot-green dot-pulse"></span>
+              Uploading (<span id="count-media-uploading" class="tabular-nums">0</span>)
+            </button>
+            <button class="btn btn-sm" id="filter-failed" data-action="filter-media" data-filter="failed">
+              <span class="status-dot dot-red"></span>
+              Failed (<span id="count-media-failed" class="tabular-nums">0</span>)
+            </button>
+            <button class="btn btn-sm" id="filter-cached" data-action="filter-media" data-filter="cached">
+              <span class="status-dot dot-blue"></span>
+              Cached on SSD (<span id="count-media-cached" class="tabular-nums">0</span>)
+            </button>
+            <button class="btn btn-sm" id="filter-cloud" data-action="filter-media" data-filter="cloud">
+              <span class="status-dot dot-gray"></span>
+              Cloud Only (<span id="count-media-cloud" class="tabular-nums">0</span>)
+            </button>
+          </div>
+
+          <!-- 1-Click Action to Retry Failed Transfers -->
+          <button class="btn btn-sm btn-accent hidden" id="btn-retry-failed" data-action="retry-failed-uploads" title="Retry all failed upload transactions">
+            <svg class="icon icon-sm" viewBox="0 0 24 24">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            Retry All Failed
+          </button>
         </div>
       </div>
 
+      <!-- MAIN MEDIA CATALOG TABLE -->
       <table>
         <thead>
           <tr>
@@ -62,6 +111,7 @@
         </tbody>
       </table>
 
+      <!-- PAGINATION -->
       <div class="pagination">
         <div class="page-info" id="page-display">Showing 0 of 0 items</div>
         <div class="btn-group">
@@ -81,7 +131,43 @@
       </div>
     </div>
 
-    <!-- Template: Media Row -->
+    <!-- DECLARATIVE HTML5 TEMPLATES -->
+
+    <!-- Template: Active Upload Job Row -->
+    <template id="tpl-job-row">
+      <tr data-key="">
+        <td>
+          <div class="file-path-cell" data-bind="file-cell"></div>
+        </td>
+        <td style="width: 260px;">
+          <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;" class="tabular-nums">
+            <span style="font-weight:600;" data-bind="progress-label">0%</span>
+            <span style="color:var(--text-muted);" data-bind="bytes-label">0 B / 0 B</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill green" data-bind="progress-bar" style="width: 0%"></div>
+          </div>
+        </td>
+        <td class="tabular-nums" style="text-align:right; color:var(--green-light); font-weight:600;" data-bind="speed">0 B/s</td>
+        <td class="tabular-nums" style="text-align:right;" data-bind="eta">-</td>
+      </tr>
+    </template>
+
+    <!-- Template: Recent / Completed / Failed Row -->
+    <template id="tpl-recent-row">
+      <tr data-key="">
+        <td>
+          <div class="file-path-cell" data-bind="file-cell"></div>
+        </td>
+        <td>
+          <span class="badge" data-bind="status-badge">Committed</span>
+        </td>
+        <td class="tabular-nums" style="text-align:right; color:var(--text-muted);" data-bind="size">0 B</td>
+        <td class="tabular-nums" style="text-align:right; color:var(--text-muted); font-size:12px;" data-bind="time">-</td>
+      </tr>
+    </template>
+
+    <!-- Template: Media Catalog Row -->
     <template id="tpl-media-row">
       <tr data-key="">
         <td>

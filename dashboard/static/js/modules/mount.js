@@ -1,7 +1,6 @@
 /* ==========================================================================
-   Local Rclone Mount Controller (Tab 3)
-   Manages sparkline, queue context metrics, segmented transfers table,
-   file path formatting, and mount throttling controls
+   Local Rclone Mount & Active Transfers Controller
+   Manages speed sparkline, pinned upload queue, and mount bandwidth throttle
    ========================================================================== */
 
 import { reconcileList, bindText, bindStyle, getBoundElement } from './dom.js';
@@ -49,12 +48,16 @@ export async function toggleMountPause() {
   }
 }
 
-function updatePauseButtonState(isPaused) {
+export function updatePauseButtonState(isPaused) {
   const iconEl = document.getElementById('pause-btn-icon');
   const textEl = document.getElementById('pause-btn-text');
   const btn = document.getElementById('btn-toggle-pause');
 
-  if (iconEl) iconEl.textContent = isPaused ? '▶' : '⏸';
+  if (iconEl) {
+    iconEl.innerHTML = isPaused
+      ? '<svg class="icon icon-xs" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>'
+      : '<svg class="icon icon-xs" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+  }
   if (textEl) textEl.textContent = isPaused ? 'Resume Uploads' : 'Pause Uploads';
   if (btn) {
     btn.title = isPaused ? 'Click to resume normal upload bandwidth' : 'Click to pause/throttle cloud uploads';
@@ -70,7 +73,7 @@ export function updateMountStats(rclone) {
   if (!rclone) return;
   lastRcloneData = rclone;
 
-  // 1. KPI Card 1: Speed & Sparkline
+  // 1. Throughput & Sparkline in Pipeline Connector
   const elSpeed = document.getElementById('stat-rc-speed');
   if (elSpeed) {
     elSpeed.textContent = rclone.speed || '0 B/s';
@@ -81,55 +84,58 @@ export function updateMountStats(rclone) {
   const liveBps = rclone.speed_bps || 0;
   updateSparkline(liveBps);
 
-  // 2. KPI Card 2: Active Uploads & Queue Depth
+  // 2. Active Uploads & Queue Depth
   const elActive = document.getElementById('stat-rc-active');
   const elQueue = document.getElementById('stat-rc-queue');
   const elRemaining = document.getElementById('stat-rc-remaining');
+  const countMediaUploading = document.getElementById('count-media-uploading');
 
-  if (elActive) elActive.textContent = rclone.transfers_active || 0;
+  const activeTransfers = rclone.transfers_active || (rclone.jobs ? rclone.jobs.length : 0);
+  if (elActive) elActive.textContent = activeTransfers;
+  if (countMediaUploading) countMediaUploading.textContent = activeTransfers;
   if (elQueue) elQueue.textContent = `${rclone.uploads_queued || 0} queued`;
   if (elRemaining) elRemaining.textContent = `(${rclone.remaining_bytes_str || '0 B'} remaining)`;
 
-  // 3. KPI Card 3: Transfers Completed & Errors
+  // 3. Transfers Completed & Errors
   const elDone = document.getElementById('stat-rc-done');
   const elCommitted = document.getElementById('stat-rc-committed');
   const elFailed = document.getElementById('stat-rc-failed');
+  const countMediaFailed = document.getElementById('count-media-failed');
 
   if (elDone) elDone.textContent = rclone.transfers_done || 0;
   if (elCommitted) elCommitted.textContent = `${rclone.transfers_done || 0} committed`;
+  
+  const failedCount = rclone.transfers_failed || (rclone.failed_transfers ? rclone.failed_transfers.length : 0);
   if (elFailed) {
-    const failedCount = rclone.transfers_failed || 0;
     elFailed.textContent = `${failedCount} failed`;
-    if (failedCount > 0) {
-      elFailed.style.color = 'var(--amber)';
-      elFailed.style.fontWeight = '600';
-    } else {
-      elFailed.style.color = 'var(--text-muted)';
-      elFailed.style.fontWeight = 'normal';
-    }
+    elFailed.style.color = failedCount > 0 ? 'var(--amber)' : 'var(--text-muted)';
+    elFailed.style.fontWeight = failedCount > 0 ? '600' : 'normal';
+  }
+  if (countMediaFailed) {
+    countMediaFailed.textContent = failedCount;
   }
 
-  // 4. KPI Card 4: Total Uploaded (Session Monotonic)
+  // 4. Cumulative Uploaded
   const elTotal = document.getElementById('stat-rc-total');
   if (elTotal) elTotal.textContent = rclone.total_uploaded || '0 B';
 
   // 5. Global Pause Toggle Button State
   updatePauseButtonState(rclone.is_paused || false);
 
-  // 6. Update Segmented Control Counters
+  // 6. Update Segmented & Header Counters
   const countActive = document.getElementById('count-active');
   const countRecent = document.getElementById('count-recent');
-  const countFailed = document.getElementById('count-failed');
+  const countFailedSeg = document.getElementById('count-failed');
 
   if (countActive) countActive.textContent = (rclone.jobs || []).length;
   if (countRecent) countRecent.textContent = (rclone.recent_transfers || []).length;
-  if (countFailed) countFailed.textContent = (rclone.failed_transfers || []).length;
+  if (countFailedSeg) countFailedSeg.textContent = (rclone.failed_transfers || []).length;
 
-  // 7. Render Transfers Table for Current View
+  // 7. Render Transfers Table
   renderTransfersTable(rclone);
 }
 
-function updateSparkline(currentBps) {
+export function updateSparkline(currentBps) {
   speedHistory.push(currentBps);
   if (speedHistory.length > SPARKLINE_POINTS) {
     speedHistory.shift();
@@ -164,7 +170,7 @@ function renderFilePathNode(container, fullPath) {
   if (!container) return;
   container.replaceChildren();
 
-  // Clean redundant internal prefix
+  // Clean redundant internal prefix (Strip double prefix)
   const clean = (fullPath || '').replace(/^library\/library\//, '').replace(/^library\//, '');
   const lastSlash = clean.lastIndexOf('/');
 
@@ -209,7 +215,7 @@ export function renderTransfersTable(rclone) {
       const recentCount = (rclone.recent_transfers || []).length;
       if (emptyMsg) {
         if (recentCount > 0) {
-          emptyMsg.innerHTML = `No active uploads right now. Mount cache is quiescent.<br><span style="font-size:12px; color:var(--text-muted);">See <a href="#" data-action="toggle-transfers-view" data-view="recent" style="color:var(--accent);">Recent (${recentCount})</a> for recently completed files.</span>`;
+          emptyMsg.innerHTML = `No active uploads right now. Mount cache is quiescent.<br><span style="font-size:12px; color:var(--text-muted);">See Recent (${recentCount}) for recently completed files.</span>`;
         } else {
           emptyMsg.textContent = 'No active uploads right now. Mount cache is quiescent.';
         }
@@ -224,10 +230,11 @@ export function renderTransfersTable(rclone) {
       renderFilePathNode(cell, j.name);
 
       const pct = j.percentage || 0;
+      // Finalizing / Verifying... state detection translated to human-friendly "Verifying in Cloud..."
       const isFinalizing = pct >= 100;
-      const progressLabel = isFinalizing ? 'Finalizing / Verifying...' : `${pct}%`;
+      const progressLabel = isFinalizing ? 'Verifying in Cloud...' : `${pct}%`;
       const fillClass = isFinalizing ? 'progress-fill finalizing' : (pct > 0 ? 'progress-fill green shimmer' : 'progress-fill green');
-      const etaLabel = isFinalizing ? 'Commit' : (j.eta ? j.eta + 's' : '-');
+      const etaLabel = isFinalizing ? 'Verifying in Cloud...' : (j.eta ? j.eta + 's' : '-');
 
       bindText(el, 'progress-label', progressLabel);
       bindStyle(el, 'progress-label', 'color', isFinalizing ? 'var(--amber)' : 'var(--heading)');

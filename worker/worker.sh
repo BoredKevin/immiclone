@@ -135,7 +135,7 @@ if [[ -n "$TS_KEY" ]]; then
   CURL_PROXY_ARGS=(--proxy "socks5://127.0.0.1:1055")
 fi
 
-WORKER_VERSION="1.0.1"
+WORKER_VERSION="1.1.0"
 
 api_post() {
   local req_path="$1"

@@ -5,7 +5,15 @@
 
 import { initEventDelegation, registerAction, registerChange, registerInput } from './modules/events.js';
 import { startSSE, getLatestPayload, setPollingInterval } from './modules/sse.js';
-import { setTransfersView, toggleMountPause } from './modules/mount.js';
+import {
+  loadMedia,
+  sortMediaTable,
+  changePage,
+  setMediaFilter,
+  retryFailedUploads,
+  onSearchInput
+} from './modules/media.js';
+import { toggleMountPause } from './modules/mount.js';
 import {
   setTxFilter,
   setWorkerFilter,
@@ -14,13 +22,6 @@ import {
   regenerateWorkerCmd,
   copyWorkerCmd
 } from './modules/duplication.js';
-import {
-  loadMedia,
-  sortMediaTable,
-  changePage,
-  setMediaFilter,
-  onSearchInput
-} from './modules/media.js';
 import {
   openModal,
   closeModal,
@@ -41,26 +42,59 @@ import {
   submitWorkerModal
 } from './modules/modals.js';
 import { openUpdatesModal, triggerUpdateCheckAction } from './modules/updater.js';
-import * as api from './modules/api.js';
+import * as api from './api.js';
 
 // ==========================================================================
-// Tab Switching
+// Single-Screen Pipeline Stage Switching
 // ==========================================================================
-export function switchNav(tab) {
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+export function switchStage(stage) {
+  document.querySelectorAll('.stage-card').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  const navBtn = document.getElementById(`tab-nav-${tab}`);
-  const content = document.getElementById(`content-${tab}`);
-  if (navBtn) navBtn.classList.add('active');
-  if (content) content.classList.add('active');
-  if (tab === 'media') loadMedia();
+
+  const stageCard = document.getElementById(`stage-card-${stage}`);
+  if (stageCard) stageCard.classList.add('active');
+
+  if (stage === 'local' || stage === 'cloud') {
+    const mediaContent = document.getElementById('content-media');
+    if (mediaContent) mediaContent.classList.add('active');
+
+    // Distinct Stage 1 vs Stage 2 filtering
+    if (stage === 'local') {
+      setMediaFilter('cached');
+    } else {
+      setMediaFilter('all');
+    }
+  } else if (stage === 'backup') {
+    const txContent = document.getElementById('content-tx');
+    if (txContent) txContent.classList.add('active');
+  }
+
+  try {
+    localStorage.setItem('immiclone_active_stage', stage);
+  } catch (e) {
+    // localStorage may be unavailable in sandboxes
+  }
+}
+
+// Backward-compatibility aliasing for tab switching
+export function switchNav(tab) {
+  if (tab === 'tx') switchStage('backup');
+  else if (tab === 'media') switchStage('cloud');
+  else if (tab === 'jobs') switchStage('cloud');
+  else if (tab === 'storage') switchStage('local');
 }
 
 // ==========================================================================
 // Action Registrations ([data-action])
 // ==========================================================================
 
-// Navigation
+// Pipeline Stage Selection (Prevents nested button / link clicks from firing stage switch)
+registerAction('select-pipeline-stage', (data, target, e) => {
+  if (e && e.target && e.target.closest('button, a, input, select')) return;
+  switchStage(data.stage);
+});
+
+// Legacy Tab Switching Support
 registerAction('switch-tab', (data) => switchNav(data.tab));
 
 // Modals: Open & Close
@@ -232,9 +266,9 @@ registerAction('delete-worker', async (data) => {
 registerAction('filter-media', (data) => setMediaFilter(data.filter));
 registerAction('sort-media', (data) => sortMediaTable(data.col));
 registerAction('change-page', (data) => changePage(parseInt(data.delta, 10) || 0));
+registerAction('retry-failed-uploads', () => retryFailedUploads());
 
 // Transfers Table & Mount Actions
-registerAction('toggle-transfers-view', (data) => setTransfersView(data.view));
 registerAction('toggle-mount-pause', () => toggleMountPause());
 
 // ==========================================================================
@@ -260,6 +294,16 @@ function initApp() {
   startSSE();
   initWorkerCmdBar();
 
+  // Restore active stage preference from localStorage (Default: Stage 2 'cloud')
+  let initialStage = 'cloud';
+  try {
+    initialStage = localStorage.getItem('immiclone_active_stage') || 'cloud';
+  } catch (e) {
+    // Sandbox fallback
+  }
+  switchStage(initialStage);
+
+  // Wire Polling Frequency Select inside Settings Modal
   const pollSel = document.getElementById('poll-interval-select');
   if (pollSel) {
     pollSel.addEventListener('change', (e) => {
