@@ -2183,3 +2183,37 @@ tr:hover td {
   font-size: 10px;
 }
 
+.bw-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 14px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  font-size: 11px;
+}
+
+.bw-telemetry-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bw-telemetry-item.bw-downtime-span {
+  grid-column: 1 / -1;
+  border-top: 1px dashed var(--border-subtle);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .bw-telemetry-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

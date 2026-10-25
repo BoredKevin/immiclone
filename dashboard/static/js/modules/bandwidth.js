@@ -109,22 +109,60 @@ export function updateBandwidthTelemetry(bw) {
     }
   }
 
-  // 5. Details Row: Reset Cycle & Downtime Reason
+  // 5. Telemetry: Quota Cycle, Router Run State, Modem, Attenuation, & Downtime
+  const modem = bw.modem || {};
+
   const elResetText = document.getElementById('bw-reset-text');
   if (elResetText) {
     const days = quota.days_left !== undefined ? quota.days_left : 0;
     elResetText.textContent = `Resets in ${days} ${days === 1 ? 'day' : 'days'}`;
   }
 
+  // Router Run State
+  const elRouterState = document.getElementById('bw-router-state');
+  const elRouterDot = document.getElementById('bw-router-dot');
+  const elRouterBadge = document.getElementById('bw-router-state-badge');
+  const runState = modem.run_state || (bw.online ? 'Online' : 'Offline');
+  if (elRouterState) elRouterState.textContent = runState;
+  if (elRouterDot && elRouterBadge) {
+    if (runState.toLowerCase() === 'online') {
+      elRouterDot.className = 'status-dot dot-green';
+      elRouterBadge.className = 'badge badge-running';
+    } else {
+      elRouterDot.className = 'status-dot dot-red';
+      elRouterBadge.className = 'badge badge-interrupted';
+    }
+  }
+
+  // Modem Status & Device Name
+  const elModemStatus = document.getElementById('bw-modem-status');
+  const elModemDevice = document.getElementById('bw-modem-device');
+  if (elModemStatus) elModemStatus.textContent = modem.status || 'RENT';
+  if (elModemDevice) {
+    elModemDevice.textContent = modem.device_name ? `(${modem.device_name})` : '';
+    elModemDevice.style.display = modem.device_name ? 'inline' : 'none';
+  }
+
+  // Optical Attenuation (Rx / Tx Power)
+  const elAttenuation = document.getElementById('bw-attenuation');
+  if (elAttenuation) elAttenuation.textContent = modem.attenuation || 'N/A';
+
+  // Last Downtime Reason, Timestamp, and Details
   const elDowntimeReason = document.getElementById('bw-downtime-reason');
+  const elDowntimeTime = document.getElementById('bw-downtime-time');
   const elDowntimeSub = document.getElementById('bw-downtime-sub');
   const elDowntimeDot = document.getElementById('bw-downtime-dot');
   const elDowntimeBadge = document.getElementById('bw-downtime-badge');
 
   const reason = downtime.reason || 'Normal';
+  const dtTime = downtime.timestamp || '';
   const sub = downtime.subtext || 'No downtime detected';
 
   if (elDowntimeReason) elDowntimeReason.textContent = reason;
+  if (elDowntimeTime) {
+    elDowntimeTime.textContent = dtTime;
+    elDowntimeTime.style.display = dtTime ? 'inline' : 'none';
+  }
   if (elDowntimeSub) elDowntimeSub.textContent = sub;
 
   if (elDowntimeDot) {
@@ -319,7 +357,15 @@ export async function testBandwidthConnection() {
         statusEl.style.color = 'var(--green-light)';
       }
       if (msgEl) {
-        msgEl.textContent = `Plan: ${diag.plan_speed_mbps} Mbps | Quota: ${diag.quota_remaining_str} of ${diag.quota_limit_str} | Downtime: ${diag.last_downtime_reason}`;
+        const parts = [
+          `Plan: ${diag.plan_speed_mbps} Mbps`,
+          `Quota: ${diag.quota_remaining_str} of ${diag.quota_limit_str}`,
+          `State: ${diag.router_run_state || 'Online'}`
+        ];
+        if (diag.attenuation) parts.push(`Optics: ${diag.attenuation}`);
+        if (diag.last_downtime_reason) parts.push(`Downtime: ${diag.last_downtime_reason}`);
+        if (diag.last_downtime_time) parts.push(`(${diag.last_downtime_time})`);
+        msgEl.textContent = parts.join(' | ');
       }
     } else {
       if (statusEl) {

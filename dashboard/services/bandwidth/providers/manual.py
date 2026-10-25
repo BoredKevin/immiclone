@@ -65,5 +65,13 @@ class ManualProvider(BaseISPProvider):
             last_downtime_reason=reason,
             last_downtime_sub=sub,
             fetched_at=time.time(),
-            error_message=""
+            error_message="",
+            last_downtime_time="",
+            last_uptime_time="",
+            router_run_state="Online",
+            modem_status="Active",
+            device_name="Manual Gateway",
+            optical_rx_power="",
+            optical_tx_power="",
+            optical_attenuation="N/A (Manual Plan)"
         )

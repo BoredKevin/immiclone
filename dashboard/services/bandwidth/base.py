@@ -15,6 +15,14 @@ class BandwidthSnapshot:
     last_downtime_sub: str    # e.g., "Power loss detected by OLT"
     fetched_at: float         # time.time()
     error_message: str = ""   # Error details if online is False
+    last_downtime_time: str = ""   # e.g., "2026-10-02 06:07:43"
+    last_uptime_time: str = ""     # e.g., "2026-10-02 10:21:25"
+    router_run_state: str = ""     # e.g., "Online"
+    modem_status: str = ""         # e.g., "RENT"
+    device_name: str = ""          # e.g., "HUAWEI ONT - EG8145V5"
+    optical_rx_power: str = ""     # e.g., "-19.43 dBm"
+    optical_tx_power: str = ""     # e.g., "+2.29 dBm"
+    optical_attenuation: str = ""  # e.g., "Rx -19.43 dBm · Tx +2.29 dBm"
 
 class BaseISPProvider(ABC):
     provider_id: str = ""

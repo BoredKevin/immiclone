@@ -134,6 +134,107 @@ class TestModularBandwidthSystem(unittest.TestCase):
             self.assertGreater(snap.reset_timestamp, 0)
             self.assertEqual(provider._cached_token, "test-jwt-token-xyz")
 
+    def test_03b_biznet_mb_quota_scaling(self):
+        """Verifies that Biznet MB-scale quota (e.g. 1,100,000 MB) scales to TB and not PB."""
+        provider = BiznetProvider()
+        login_resp = json.dumps({"code": 200, "success": True, "api-token": "test-jwt-token-xyz"}).encode("utf-8")
+        quota_resp = json.dumps({
+            "mainKuota": {
+                "remainingLimit": 550000.0,  # 550,000 MB (~550 GB)
+                "limit": 1100000.0,          # 1,100,000 MB (~1.1 TB)
+                "validUntil": "2026-11-01 00:00:00"
+            }
+        }).encode("utf-8")
+        bw_resp = json.dumps({"data": {"active": {"bandwidth": 200, "uom": "Mbps"}}}).encode("utf-8")
+        modem_resp = json.dumps({"code": 200, "data": {"lastDowntimeReason": "Normal", "statusDescription": "Active"}}).encode("utf-8")
+
+        mock_responses = [
+            BytesIO(login_resp),
+            BytesIO(quota_resp),
+            BytesIO(bw_resp),
+            BytesIO(modem_resp)
+        ]
+
+        def fake_urlopen(req, timeout=10.0):
+            m = MagicMock()
+            resp_bytes = mock_responses.pop(0)
+            m.read.return_value = resp_bytes.getvalue()
+            m.__enter__.return_value = m
+            return m
+
+        creds = {"biznet_id": "000000123456", "username": "testuser", "password": "secretpassword"}
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            snap = provider.fetch_telemetry(creds)
+            self.assertTrue(snap.online)
+            # Should be MB converted to bytes (* 1024^2), NOT GB (* 1024^3)
+            self.assertEqual(snap.quota_limit_bytes, int(1100000.0 * (1024 ** 2)))
+            self.assertEqual(snap.quota_remaining_bytes, int(550000.0 * (1024 ** 2)))
+            # Ensure it formats in TB and never PB
+            from dashboard.config import format_size
+            formatted_limit = format_size(snap.quota_limit_bytes)
+            self.assertTrue(formatted_limit.endswith("TB"), f"Expected TB, got {formatted_limit}")
+            self.assertFalse(formatted_limit.endswith("PB"), f"Quota incorrectly formatted as Petabytes: {formatted_limit}")
+
+    def test_03c_biznet_hardware_and_attenuation_telemetry(self):
+        """Verifies parsing of exact Biznet modem payload: run_state, status_modem, attenuation, downtime timestamp."""
+        provider = BiznetProvider()
+        login_resp = json.dumps({"code": 200, "success": True, "api-token": "test-jwt-token-xyz"}).encode("utf-8")
+        quota_resp = json.dumps({
+            "mainKuota": {
+                "remainingLimit": 550000.0,
+                "limit": 1100000.0,
+                "validUntil": "2026-11-01 00:00:00"
+            }
+        }).encode("utf-8")
+        bw_resp = json.dumps({"data": {"active": {"bandwidth": 200, "uom": "Mbps"}}}).encode("utf-8")
+        modem_resp = json.dumps({
+            "code": 200,
+            "data": {
+                "run_state": "Online",
+                "serial_number": "SN123456",
+                "status_modem": "RENT",
+                "type": "EG8145V5",
+                "rx_power": "-1943",
+                "tx_power": "229",
+                "last_uptime": "2026-10-02 10:21:25",
+                "last_downtime": "2026-10-02 06:07:43",
+                "last_downcause": "Dying-gasp",
+                "device_name": "HUAWEI ONT - EG8145V5",
+                "olt_name": "GPON BIG OLT - POP",
+                "pop_type": "SPOP"
+            },
+            "status": "success",
+            "message": "Device detail has been successfully loaded"
+        }).encode("utf-8")
+
+        mock_responses = [
+            BytesIO(login_resp),
+            BytesIO(quota_resp),
+            BytesIO(bw_resp),
+            BytesIO(modem_resp)
+        ]
+
+        def fake_urlopen(req, timeout=10.0):
+            m = MagicMock()
+            resp_bytes = mock_responses.pop(0)
+            m.read.return_value = resp_bytes.getvalue()
+            m.__enter__.return_value = m
+            return m
+
+        creds = {"biznet_id": "000000123456", "username": "testuser", "password": "secretpassword"}
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            snap = provider.fetch_telemetry(creds)
+            self.assertTrue(snap.online)
+            self.assertEqual(snap.last_downtime_reason, "Dying-gasp")
+            self.assertEqual(snap.last_downtime_time, "2026-10-02 06:07:43")
+            self.assertEqual(snap.last_uptime_time, "2026-10-02 10:21:25")
+            self.assertEqual(snap.router_run_state, "Online")
+            self.assertEqual(snap.modem_status, "RENT")
+            self.assertEqual(snap.device_name, "HUAWEI ONT - EG8145V5")
+            self.assertEqual(snap.optical_rx_power, "-19.43 dBm")
+            self.assertEqual(snap.optical_tx_power, "+2.29 dBm")
+            self.assertEqual(snap.optical_attenuation, "Rx -19.43 dBm · Tx +2.29 dBm")
+
     def test_04_singleton_persistence_in_manager(self):
         """Verifies that manager.py reuses the same singleton provider instance across cycles."""
         inst1 = get_provider_instance("biznet")
@@ -154,6 +255,11 @@ class TestModularBandwidthSystem(unittest.TestCase):
         self.assertIn("live_speed_mbps", status)
         self.assertIn("quota", status)
         self.assertIn("downtime", status)
+        self.assertIn("modem", status)
+        self.assertTrue(status["quota"]["remaining_str"].endswith("GB"))
+        self.assertTrue(status["quota"]["limit_str"].endswith("GB"))
+        self.assertIn("run_state", status["modem"])
+        self.assertIn("attenuation", status["modem"])
         self.assertGreater(status["saturation_pct"], 90.0)
 
     def test_06_password_masking_and_preservation(self):

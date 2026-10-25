@@ -170,30 +170,78 @@ class BiznetProvider(BaseISPProvider):
             # 3. Fetch Modem Detail V2 (Optional, non-fatal if fails)
             downtime_reason = "Dying-gasp"
             downtime_sub = "Power loss detected by OLT"
+            last_downtime_time = ""
+            last_uptime_time = ""
+            router_run_state = "Online"
+            modem_status = ""
+            device_name = ""
+            rx_power_str = ""
+            tx_power_str = ""
+            attenuation_str = ""
+
+            def _fmt_dbm(raw_val: Any) -> str:
+                if raw_val is None or str(raw_val).strip() == "":
+                    return ""
+                try:
+                    f = float(str(raw_val).strip())
+                    if abs(f) > 100:  # e.g., -1943 -> -19.43, 229 -> 2.29
+                        f = f / 100.0
+                    sign = "+" if f > 0 else ""
+                    return f"{sign}{f:.2f} dBm"
+                except Exception:
+                    return str(raw_val).strip()
+
             try:
                 m_payload = json.dumps({"contractNumber": biznet_id}).encode("utf-8")
                 m_req = urllib.request.Request(modem_url, data=m_payload, headers=headers)
                 with urllib.request.urlopen(m_req, timeout=10.0) as m_resp:
                     m_data = json.loads(m_resp.read().decode("utf-8"))
                     if isinstance(m_data, dict):
+                        inner = m_data.get("data") if isinstance(m_data.get("data"), dict) else m_data
+
                         dt_val = (
-                            m_data.get("lastDowntimeReason")
-                            or m_data.get("last_downtime_reason")
-                            or m_data.get("downtimeReason")
-                            or m_data.get("data", {}).get("lastDowntimeReason")
-                            or m_data.get("data", {}).get("downtimeReason")
-                            or m_data.get("data", {}).get("status")
+                            inner.get("last_downcause")
+                            or inner.get("lastDowncause")
+                            or inner.get("lastDowntimeReason")
+                            or inner.get("last_downtime_reason")
+                            or inner.get("downtimeReason")
+                            or inner.get("status")
+                            or m_data.get("last_downcause")
+                            or m_data.get("lastDowntimeReason")
                         )
                         if dt_val:
                             downtime_reason = str(dt_val)
+
                         dt_sub = (
-                            m_data.get("description")
-                            or m_data.get("data", {}).get("description")
-                            or m_data.get("data", {}).get("statusDescription")
-                            or m_data.get("data", {}).get("message")
+                            inner.get("description")
+                            or inner.get("statusDescription")
+                            or inner.get("message")
+                            or m_data.get("description")
+                            or m_data.get("message")
                         )
-                        if dt_sub:
+                        if dt_sub and "successfully loaded" not in str(dt_sub).lower():
                             downtime_sub = str(dt_sub)
+
+                        last_downtime_time = str(inner.get("last_downtime") or inner.get("lastDowntime") or "").strip()
+                        last_uptime_time = str(inner.get("last_uptime") or inner.get("lastUptime") or "").strip()
+                        router_run_state = str(inner.get("run_state") or inner.get("runState") or "Online").strip()
+                        modem_status = str(inner.get("status_modem") or inner.get("statusModem") or inner.get("modemStatus") or "").strip()
+                        device_name = str(inner.get("device_name") or inner.get("deviceName") or inner.get("type") or "").strip()
+
+                        rx_raw = inner.get("rx_power") or inner.get("rxPower")
+                        tx_raw = inner.get("tx_power") or inner.get("txPower")
+                        rx_power_str = _fmt_dbm(rx_raw)
+                        tx_power_str = _fmt_dbm(tx_raw)
+
+                        if rx_power_str and tx_power_str:
+                            attenuation_str = f"Rx {rx_power_str} · Tx {tx_power_str}"
+                        elif rx_power_str:
+                            attenuation_str = f"Rx {rx_power_str}"
+                        elif tx_power_str:
+                            attenuation_str = f"Tx {tx_power_str}"
+
+                        if last_downtime_time and (not downtime_sub or "Power loss" in downtime_sub or "No downtime" in downtime_sub):
+                            downtime_sub = f"Recorded at {last_downtime_time}"
             except Exception:
                 pass
 
@@ -201,13 +249,19 @@ class BiznetProvider(BaseISPProvider):
             main_rem = float(q_data.get("mainKuota", {}).get("remainingLimit", 0))
             main_lim = float(q_data.get("mainKuota", {}).get("limit", 0))
 
-            # Auto-detect bytes vs GB
-            if main_lim < 10_000_000:
-                main_rem_bytes = int(main_rem * (1024 ** 3))
-                main_lim_bytes = int(main_lim * (1024 ** 3))
-            else:
+            # Auto-detect unit scale:
+            # - > 10,000,000,000: Value is in Bytes
+            # - 10,000 to 10,000,000 (e.g. 1,100,000 for 1.1 TB): Value is in Megabytes (MB -> Bytes: * 1024^2)
+            # - <= 10,000 (e.g. 1,100 for 1.1 TB): Value is in Gigabytes (GB -> Bytes: * 1024^3)
+            if main_lim > 10_000_000_000:
                 main_rem_bytes = int(main_rem)
                 main_lim_bytes = int(main_lim)
+            elif main_lim > 10_000:
+                main_rem_bytes = int(main_rem * (1024 ** 2))
+                main_lim_bytes = int(main_lim * (1024 ** 2))
+            else:
+                main_rem_bytes = int(main_rem * (1024 ** 3))
+                main_lim_bytes = int(main_lim * (1024 ** 3))
 
             # Parse valid until
             valid_str = (
@@ -239,7 +293,15 @@ class BiznetProvider(BaseISPProvider):
                 last_downtime_reason=downtime_reason,
                 last_downtime_sub=downtime_sub,
                 fetched_at=time.time(),
-                error_message=""
+                error_message="",
+                last_downtime_time=last_downtime_time,
+                last_uptime_time=last_uptime_time,
+                router_run_state=router_run_state,
+                modem_status=modem_status,
+                device_name=device_name,
+                optical_rx_power=rx_power_str,
+                optical_tx_power=tx_power_str,
+                optical_attenuation=attenuation_str
             )
 
         except urllib.error.HTTPError as he:

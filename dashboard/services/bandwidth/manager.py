@@ -13,6 +13,11 @@ from dashboard.config import (
 from dashboard.services.bandwidth.base import BaseISPProvider, BandwidthSnapshot
 from dashboard.services.bandwidth.providers import get_provider_classes
 
+def format_gb_precise(bytes_val: float) -> str:
+    """Formats bytes into precise GB string with comma grouping and 1 decimal place."""
+    gb = max(0.0, float(bytes_val) / (1024.0 ** 3))
+    return f"{gb:,.1f} GB"
+
 DEFAULT_BANDWIDTH_CONFIG = {
     "enabled": True,
     "active_provider": "biznet",
@@ -165,12 +170,18 @@ def test_provider_connection(provider_id: Optional[str] = None, credentials: Opt
         "latency_ms": latency_ms,
         "plan_speed_mbps": snapshot.plan_speed_mbps,
         "quota_remaining_bytes": snapshot.quota_remaining_bytes,
-        "quota_remaining_str": format_size(snapshot.quota_remaining_bytes),
+        "quota_remaining_str": format_gb_precise(snapshot.quota_remaining_bytes),
         "quota_limit_bytes": snapshot.quota_limit_bytes,
-        "quota_limit_str": format_size(snapshot.quota_limit_bytes),
+        "quota_limit_str": format_gb_precise(snapshot.quota_limit_bytes),
         "reset_timestamp": snapshot.reset_timestamp,
         "last_downtime_reason": snapshot.last_downtime_reason,
         "last_downtime_sub": snapshot.last_downtime_sub,
+        "last_downtime_time": snapshot.last_downtime_time,
+        "last_uptime_time": snapshot.last_uptime_time,
+        "router_run_state": snapshot.router_run_state or ("Online" if snapshot.online else "Offline"),
+        "modem_status": snapshot.modem_status,
+        "device_name": snapshot.device_name,
+        "attenuation": snapshot.optical_attenuation,
         "error_message": snapshot.error_message
     }
 
@@ -203,6 +214,10 @@ def get_cached_bandwidth_status(live_upload_bps: float = 0.0) -> Dict[str, Any]:
     rem_pct = round((rem_bytes / lim_bytes) * 100.0, 1) if lim_bytes > 0 else 0.0
     used_pct = round((used_bytes / lim_bytes) * 100.0, 1) if lim_bytes > 0 else 0.0
 
+    rem_gb_str = format_gb_precise(rem_bytes)
+    lim_gb_str = format_gb_precise(lim_bytes)
+    used_gb_str = format_gb_precise(used_bytes)
+
     days_left = max(0, int((snapshot.reset_timestamp - time.time()) / 86400)) if snapshot.reset_timestamp else 0
 
     return {
@@ -217,11 +232,14 @@ def get_cached_bandwidth_status(live_upload_bps: float = 0.0) -> Dict[str, Any]:
         "saturation_pct": saturation_pct,
         "quota": {
             "remaining_bytes": rem_bytes,
-            "remaining_str": format_size(rem_bytes),
+            "remaining_str": rem_gb_str,
+            "remaining_gb": round(rem_bytes / (1024.0 ** 3), 1),
             "limit_bytes": lim_bytes,
-            "limit_str": format_size(lim_bytes),
+            "limit_str": lim_gb_str,
+            "limit_gb": round(lim_bytes / (1024.0 ** 3), 1),
             "used_bytes": used_bytes,
-            "used_str": format_size(used_bytes),
+            "used_str": used_gb_str,
+            "used_gb": round(used_bytes / (1024.0 ** 3), 1),
             "remaining_pct": rem_pct,
             "used_pct": used_pct,
             "reset_timestamp": snapshot.reset_timestamp,
@@ -229,7 +247,17 @@ def get_cached_bandwidth_status(live_upload_bps: float = 0.0) -> Dict[str, Any]:
         },
         "downtime": {
             "reason": snapshot.last_downtime_reason or "Normal",
-            "subtext": snapshot.last_downtime_sub or "No downtime detected"
+            "subtext": snapshot.last_downtime_sub or "No downtime detected",
+            "timestamp": snapshot.last_downtime_time or "",
+            "uptime_timestamp": snapshot.last_uptime_time or ""
+        },
+        "modem": {
+            "run_state": snapshot.router_run_state or ("Online" if snapshot.online else "Offline"),
+            "status": snapshot.modem_status or "Normal",
+            "device_name": snapshot.device_name or "",
+            "rx_power": snapshot.optical_rx_power or "",
+            "tx_power": snapshot.optical_tx_power or "",
+            "attenuation": snapshot.optical_attenuation or (snapshot.optical_rx_power or "Normal")
         },
         "last_updated": snapshot.fetched_at,
         "error_message": snapshot.error_message

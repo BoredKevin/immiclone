@@ -50,20 +50,39 @@
             </div>
           </div>
 
-          <!-- Status & Downtime Detail Row -->
-          <div class="bw-details-row">
-            <div class="bw-detail-item">
+          <!-- Telemetry & Line Health Grid -->
+          <div class="bw-telemetry-grid">
+            <div class="bw-telemetry-item">
               <span class="bw-detail-label">Quota Cycle:</span>
-              <span class="bw-detail-val tabular-nums" id="bw-reset-text">Resets in 6 days (Nov 01)</span>
+              <span class="bw-detail-val tabular-nums" id="bw-reset-text">Resets in 6 days</span>
             </div>
 
-            <!-- Extra Field: Last Downtime Reason -->
-            <div class="bw-detail-item bw-downtime-item">
+            <div class="bw-telemetry-item">
+              <span class="bw-detail-label">Router State:</span>
+              <span class="badge badge-running" id="bw-router-state-badge" style="font-size:10px; padding: 2px 7px;">
+                <span class="status-dot dot-green" id="bw-router-dot"></span>
+                <span id="bw-router-state">Online</span>
+              </span>
+            </div>
+
+            <div class="bw-telemetry-item">
+              <span class="bw-detail-label">Modem:</span>
+              <span class="bw-detail-val" id="bw-modem-status">RENT</span>
+              <span class="bw-detail-sub" id="bw-modem-device">EG8145V5</span>
+            </div>
+
+            <div class="bw-telemetry-item">
+              <span class="bw-detail-label">Attenuation:</span>
+              <span class="bw-detail-val tabular-nums" id="bw-attenuation">Rx -19.43 dBm · Tx +2.29 dBm</span>
+            </div>
+
+            <div class="bw-telemetry-item bw-downtime-span">
               <span class="bw-detail-label">Last Downtime:</span>
-              <span class="badge badge-standby" id="bw-downtime-badge" style="font-size:11px; padding: 2px 7px;">
+              <span class="badge badge-standby" id="bw-downtime-badge" style="font-size:10px; padding: 2px 7px;">
                 <span class="status-dot dot-amber" id="bw-downtime-dot"></span>
                 <span id="bw-downtime-reason">Dying-gasp</span>
               </span>
+              <span class="bw-detail-sub tabular-nums" id="bw-downtime-time" style="color:var(--text-muted); font-weight:500;">2026-10-02 06:07:43</span>
               <span class="bw-detail-sub" id="bw-downtime-sub">Power loss detected by OLT</span>
             </div>
           </div>
