@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+import signal
 import threading
 import socketserver
 
@@ -37,12 +38,39 @@ def main():
     wd = threading.Thread(target=watchdog_loop, daemon=True)
     wd.start()
 
-    with ThreadedHTTPServer(("0.0.0.0", PORT), DashboardHandler) as httpd:
+    try:
+        httpd = ThreadedHTTPServer(("0.0.0.0", PORT), DashboardHandler)
+    except OSError as e:
+        print(f"[CRITICAL] Failed to bind dashboard to 0.0.0.0:{PORT}: {e}", file=sys.stderr)
+        err_msg = str(e).lower()
+        if getattr(e, 'errno', None) == 98 or "already in use" in err_msg or getattr(e, 'winerror', None) in (10048, 10013):
+            print(f"[!] Port {PORT} is already in use by another process. Please free port {PORT} or set PORT environment variable.", file=sys.stderr)
+            sys.exit(48)
+        sys.exit(1)
+
+    shutdown_event = threading.Event()
+
+    def handle_shutdown(signum, frame):
+        if not shutdown_event.is_set():
+            shutdown_event.set()
+            sig_name = "SIGTERM" if signum == signal.SIGTERM else ("SIGINT" if signum == signal.SIGINT else f"signal {signum}")
+            print(f"\n[!] Received {sig_name}, shutting down server gracefully...", flush=True)
+            threading.Thread(target=httpd.shutdown, daemon=True).start()
+
+    try:
+        signal.signal(signal.SIGINT, handle_shutdown)
+        signal.signal(signal.SIGTERM, handle_shutdown)
+    except (ValueError, AttributeError):
+        pass
+
+    with httpd:
         print(f"[*] Immiclone Dashboard listening on 0.0.0.0:{PORT}")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("\n[!] Shutting down server...")
+        finally:
+            print("[*] Dashboard server stopped.")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

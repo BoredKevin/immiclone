@@ -166,14 +166,26 @@ def check_cross_drive_sharing(source, dest, rclone_flags=None):
     }
 
 def load_transactions():
-    """Loads transactions from disk."""
+    """Loads transactions from disk with validation and corruption recovery."""
     with STATE_LOCK:
         if os.path.exists(TX_STORE_PATH):
             try:
                 with open(TX_STORE_PATH, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        return data
+                    print(f"[!] Warning: {TX_STORE_PATH} is not a JSON list (type={type(data).__name__}). Quarantining.")
             except Exception as e:
-                print(f"[!] Error loading transactions: {e}")
+                print(f"[!] Error loading transactions from {TX_STORE_PATH}: {e}. Quarantining.")
+
+            # Quarantine corrupt or invalid file to prevent unrecoverable loops
+            try:
+                ts = int(time.time())
+                backup_path = f"{TX_STORE_PATH}.corrupt-{ts}"
+                os.replace(TX_STORE_PATH, backup_path)
+                print(f"[*] Quarantined invalid transaction store to {backup_path}")
+            except Exception as q_err:
+                print(f"[!] Failed to quarantine {TX_STORE_PATH}: {q_err}")
         return []
 
 def save_transactions(tx_list):
@@ -185,7 +197,7 @@ def get_transaction_by_id(tx_id):
     """Retrieves a single transaction by ID."""
     with STATE_LOCK:
         for tx in load_transactions():
-            if tx.get("tx_id") == tx_id:
+            if isinstance(tx, dict) and tx.get("tx_id") == tx_id:
                 return tx
         return None
 
@@ -195,7 +207,7 @@ def update_transaction(tx_id, updates):
         tx_list = load_transactions()
         found = False
         for i, tx in enumerate(tx_list):
-            if tx.get("tx_id") == tx_id:
+            if isinstance(tx, dict) and tx.get("tx_id") == tx_id:
                 tx.update(updates)
                 tx["updated_at"] = int(time.time())
                 tx_list[i] = tx
@@ -329,7 +341,7 @@ def delete_transaction(tx_id):
     """Permanently deletes a transaction."""
     with STATE_LOCK:
         tx_list = load_transactions()
-        filtered = [tx for tx in tx_list if tx.get("tx_id") != tx_id]
+        filtered = [tx for tx in tx_list if isinstance(tx, dict) and tx.get("tx_id") != tx_id]
         if len(filtered) < len(tx_list):
             save_transactions(filtered)
             return True
@@ -339,7 +351,7 @@ def clear_completed_transactions():
     """Removes all completed and cancelled transactions."""
     with STATE_LOCK:
         tx_list = load_transactions()
-        filtered = [tx for tx in tx_list if tx.get("status") not in ("COMPLETED", "CANCELLED")]
+        filtered = [tx for tx in tx_list if isinstance(tx, dict) and tx.get("status") not in ("COMPLETED", "CANCELLED")]
         cleared = len(tx_list) - len(filtered)
         if cleared > 0:
             save_transactions(filtered)

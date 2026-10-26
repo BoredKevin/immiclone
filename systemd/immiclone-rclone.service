@@ -4,13 +4,15 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
-Type=notify
+Type=simple
 User=root
 Group=root
 ExecStart=/usr/bin/python3 /usr/local/bin/immiclone --mount
 ExecStop=/usr/bin/python3 /usr/local/bin/immiclone --unmount
 Restart=on-failure
 RestartSec=10
+TimeoutStopSec=20s
+KillMode=mixed
 
 [Install]
 WantedBy=multi-user.target

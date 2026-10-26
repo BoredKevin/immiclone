@@ -1,7 +1,7 @@
 [Unit]
 Description=Immiclone Storage & Duplication Control Center
-After=network.target network-online.target immiclone-rclone.service
-Wants=network-online.target
+After=network.target network-online.target
+Wants=network-online.target immiclone-rclone.service
 
 [Service]
 Type=simple
@@ -9,6 +9,7 @@ User=root
 ExecStart=/usr/bin/python3 /usr/local/bin/immiclone
 Restart=always
 RestartSec=5
+TimeoutStopSec=10s
 EnvironmentFile=-/etc/default/immiclone
 
 [Install]

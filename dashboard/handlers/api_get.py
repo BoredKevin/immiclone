@@ -154,8 +154,14 @@ class GetRoutesMixin:
 
         # 7. PAGINATED MEDIA CATALOG API
         elif canonical_path == "/api/v1/media":
-            page = int(query.get("page", ["1"])[0])
-            limit = int(query.get("limit", ["50"])[0])
+            try:
+                page = max(1, int(query.get("page", ["1"])[0]))
+            except (ValueError, TypeError):
+                page = 1
+            try:
+                limit = max(1, min(500, int(query.get("limit", ["50"])[0])))
+            except (ValueError, TypeError):
+                limit = 50
             filter_type = query.get("filter", ["all"])[0]
             search_query = query.get("q", [""])[0]
 

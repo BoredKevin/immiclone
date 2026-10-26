@@ -17,14 +17,26 @@ _active_workers = {} # worker_id -> { id, name, token, hostname, status, last_se
 _worker_tokens = {}  # token -> worker_id
 
 def load_workers():
-    """Loads workers from disk."""
+    """Loads workers from disk with validation and corruption recovery."""
     with STATE_LOCK:
         if os.path.exists(WORKERS_STORE_PATH):
             try:
                 with open(WORKERS_STORE_PATH, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        return data
+                    print(f"[!] Warning: {WORKERS_STORE_PATH} is not a JSON list (type={type(data).__name__}). Quarantining.")
             except Exception as e:
-                print(f"[!] Error loading workers: {e}")
+                print(f"[!] Error loading workers from {WORKERS_STORE_PATH}: {e}. Quarantining.")
+
+            # Quarantine corrupt or invalid file to prevent unrecoverable startup loops
+            try:
+                ts = int(time.time())
+                backup_path = f"{WORKERS_STORE_PATH}.corrupt-{ts}"
+                os.replace(WORKERS_STORE_PATH, backup_path)
+                print(f"[*] Quarantined invalid worker store to {backup_path}")
+            except Exception as q_err:
+                print(f"[!] Failed to quarantine {WORKERS_STORE_PATH}: {q_err}")
         return []
 
 def save_workers_list(workers_list):
@@ -33,18 +45,30 @@ def save_workers_list(workers_list):
         return atomic_write_json(WORKERS_STORE_PATH, workers_list)
 
 def init_workers_from_disk():
-    """Initializes in-memory worker table on server startup."""
+    """Initializes in-memory worker table on server startup with defensive validation."""
     global _active_workers, _worker_tokens
     with STATE_LOCK:
         stored = load_workers()
+        if not isinstance(stored, list):
+            stored = []
         for w in stored:
+            if not isinstance(w, dict):
+                continue
             wid = w.get("id")
-            if wid:
-                if time.time() - w.get("last_seen", 0) > 15:
-                    w["status"] = "OFFLINE"
-                _active_workers[wid] = w
-                if w.get("token"):
-                    _worker_tokens[w["token"]] = wid
+            if not wid or not isinstance(wid, str):
+                continue
+
+            last_seen = w.get("last_seen", 0)
+            if not isinstance(last_seen, (int, float)):
+                last_seen = 0
+                w["last_seen"] = 0
+
+            if time.time() - last_seen > 15:
+                w["status"] = "OFFLINE"
+            _active_workers[wid] = w
+            token = w.get("token")
+            if token and isinstance(token, str):
+                _worker_tokens[token] = wid
 
 def sync_workers_to_disk():
     """Syncs in-memory table to disk."""

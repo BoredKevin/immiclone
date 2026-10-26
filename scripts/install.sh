@@ -61,8 +61,11 @@ systemctl restart immiclone.service
 
 systemctl enable immiclone-rclone.service
 # Only start rclone mount if primary_remote is configured
-if /usr/local/bin/immiclone --mount-check 2>/dev/null || true; then
+if /usr/local/bin/immiclone --mount-check >/dev/null 2>&1; then
+  echo "--> Starting immiclone-rclone.service..."
   systemctl restart immiclone-rclone.service || true
+else
+  echo "--> [i] No primary_remote configured yet; skipping rclone mount start."
 fi
 
 echo "==> Installation complete! Service status:"

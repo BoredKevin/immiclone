@@ -39,10 +39,13 @@ class BaseHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(message.encode("utf-8"))
 
-    def read_json_body(self):
-        """Parses JSON body from incoming POST request."""
-        length = int(self.headers.get("Content-Length", 0))
-        if length <= 0:
+    def read_json_body(self, max_length=10 * 1024 * 1024):
+        """Parses JSON body from incoming POST request with bounded size and safe length parsing."""
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+        except (ValueError, TypeError):
+            return {}
+        if length <= 0 or length > max_length:
             return {}
         try:
             body = self.rfile.read(length).decode("utf-8")

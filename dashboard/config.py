@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import secrets
 import threading
 import subprocess
@@ -200,9 +201,21 @@ def get_app_config():
         if os.path.exists(APP_CONFIG_PATH):
             try:
                 with open(APP_CONFIG_PATH, "r", encoding="utf-8") as f:
-                    loaded = json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        loaded = data
+                    else:
+                        print(f"[!] Warning: {APP_CONFIG_PATH} is not a JSON dict. Quarantining.")
+                        raise ValueError("Invalid app_config format")
             except Exception as e:
                 print(f"[!] Error loading {APP_CONFIG_PATH}: {e}")
+                try:
+                    ts = int(time.time())
+                    backup_path = f"{APP_CONFIG_PATH}.corrupt-{ts}"
+                    os.replace(APP_CONFIG_PATH, backup_path)
+                    print(f"[*] Quarantined invalid app config to {backup_path}")
+                except Exception as q_err:
+                    print(f"[!] Failed to quarantine {APP_CONFIG_PATH}: {q_err}")
 
         # Deep merge defaults with loaded config
         merged = json.loads(json.dumps(DEFAULT_CONFIG))
@@ -227,11 +240,24 @@ def get_app_config():
         return _cached_config
 
 def save_app_config(new_config):
-    """Atomically saves application settings."""
+    """Atomically saves application settings after deep merging defaults to preserve schema."""
     global _cached_config
     with STATE_LOCK:
-        _cached_config = new_config
-        return atomic_write_json(APP_CONFIG_PATH, new_config)
+        merged = json.loads(json.dumps(DEFAULT_CONFIG))
+        # Merge currently cached or existing config first
+        if _cached_config and isinstance(_cached_config, dict):
+            for section in ("general", "storage"):
+                if isinstance(_cached_config.get(section), dict):
+                    merged[section].update(_cached_config[section])
+
+        # Then merge incoming new_config
+        if isinstance(new_config, dict):
+            for section in ("general", "storage"):
+                if isinstance(new_config.get(section), dict):
+                    merged[section].update(new_config[section])
+
+        _cached_config = merged
+        return atomic_write_json(APP_CONFIG_PATH, merged)
 
 # Convenience Accessors
 def get_primary_remote():
